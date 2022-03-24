@@ -25,8 +25,11 @@ import com.axelor.apps.base.exceptions.IExceptionMessage;
 import com.axelor.exception.AxelorException;
 import com.axelor.exception.db.repo.TraceBackRepository;
 import com.axelor.i18n.I18n;
+import com.axelor.meta.CallMethod;
 import com.google.inject.Inject;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -89,5 +92,44 @@ public class YearServiceImpl implements YearService {
             date,
             type)
         .fetchOne();
+  }
+
+  @CallMethod
+  public ZonedDateTime getOldestFiscalYearToDate() {
+	  System.err.println("hOUHOU");
+    Year year =
+        yearRepository
+            .all()
+            .filter(
+                "self.typeSelect = ?1 AND self.statusSelect = ?2",
+                YearRepository.TYPE_FISCAL,
+                YearRepository.STATUS_OPENED)
+            .order("toDate")
+            .fetchOne();
+    if (year != null) {
+    	System.err.println(year);
+    	System.err.println(year.getToDate());
+    	LocalDate date = year.getToDate();
+    	return ZonedDateTime.of(year.getToDate().atStartOfDay(), ZoneId.systemDefault());
+    }
+    return ZonedDateTime.now();
+  }
+
+  @CallMethod
+  public ZonedDateTime getOldestFiscalYearFromDate() {
+    Year year =
+        yearRepository
+            .all()
+            .filter(
+                "self.typeSelect = ?1 AND self.statusSelect = ?2",
+                YearRepository.TYPE_FISCAL,
+                YearRepository.STATUS_OPENED)
+            .order("fromDate")
+            .fetchOne();
+    if (year != null) {
+    	LocalDate date = year.getFromDate();
+        return ZonedDateTime.now().withYear(date.getYear()).withMonth(date.getMonthValue()).withDayOfYear(date.getDayOfYear());
+      }
+      return ZonedDateTime.now();
   }
 }

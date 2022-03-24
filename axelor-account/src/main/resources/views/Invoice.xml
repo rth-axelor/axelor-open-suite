@@ -2394,8 +2394,11 @@ InvoiceSet.length > 0))"
       <domain>CURRENT_DATE &gt; self.dueDate and self.companyInTaxTotalRemaining &gt; 0</domain>
     </filter>
     <filter title="On going fiscal year">
-    	<domain>self.createdOn &gt; :_fiscalYear.fromDate and self.createdOn &lt; :_fiscalYear.toDate</domain>
-    	<context name="_fiscalYear" value="eval: __repo__(Year).all().filter('self.typeSelect = 1 AND self.statusSelect = 1 AND min(toDate)')"/>
+      <domain>self.createdOn &gt; :_fromDate</domain>
+      <context name="_toDate"
+        value="call:com.axelor.apps.base.service.YearServiceImpl:getOldestFiscalYearToDate()"/>
+      <context name="_fromDate"
+        value="call:com.axelor.apps.base.service.YearServiceImpl:getOldestFiscalYearFromDate()"/>
     </filter>
   </search-filters>
 
