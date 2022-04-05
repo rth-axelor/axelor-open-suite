@@ -62,8 +62,8 @@ public class BankStatementService {
       BankStatementRepository bankStatementRepository,
       BankPaymentBankStatementLineAFB120Repository bankPaymentBankStatementLineAFB120Repository,
       BankStatementLineRepository bankStatementLineRepository,
-      BankStatementLineAFB120Service bankStatementLineAFB120Service,
-      BankDetailsRepository bankDetailsRepository) {
+      BankDetailsRepository bankDetailsRepository,
+      BankStatementLineAFB120Service bankStatementLineAFB120Service) {
     this.bankStatementRepository = bankStatementRepository;
     this.bankPaymentBankStatementLineAFB120Repository =
         bankPaymentBankStatementLineAFB120Repository;
