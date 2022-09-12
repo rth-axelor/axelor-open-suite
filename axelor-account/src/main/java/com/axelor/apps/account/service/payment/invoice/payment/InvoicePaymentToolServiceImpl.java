@@ -361,7 +361,7 @@ public class InvoicePaymentToolServiceImpl implements InvoicePaymentToolService 
       return invoiceList.stream()
           .map(Invoice::getInvoiceTermList)
           .flatMap(Collection::stream)
-          .filter(invoiceTermService::isNotAwaitingPayment)
+          .filter(it -> !it.getIsAwaitingPayment())
           .map(it -> invoiceTermService.getAmountRemaining(it, date))
           .reduce(BigDecimal::add)
           .orElse(BigDecimal.ZERO);

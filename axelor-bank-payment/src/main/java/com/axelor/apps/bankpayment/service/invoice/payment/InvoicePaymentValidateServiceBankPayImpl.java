@@ -19,6 +19,7 @@ package com.axelor.apps.bankpayment.service.invoice.payment;
 
 import com.axelor.apps.account.db.Invoice;
 import com.axelor.apps.account.db.InvoicePayment;
+import com.axelor.apps.account.db.InvoiceTerm;
 import com.axelor.apps.account.db.PaymentMode;
 import com.axelor.apps.account.db.repo.InvoicePaymentRepository;
 import com.axelor.apps.account.db.repo.PaymentModeRepository;
@@ -48,8 +49,12 @@ import com.google.inject.Inject;
 import com.google.inject.persist.Transactional;
 import com.google.inject.servlet.RequestScoped;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;
+import org.apache.commons.collections.CollectionUtils;
 
 @RequestScoped
 public class InvoicePaymentValidateServiceBankPayImpl extends InvoicePaymentValidateServiceImpl {
@@ -96,21 +101,29 @@ public class InvoicePaymentValidateServiceBankPayImpl extends InvoicePaymentVali
   protected void setInvoicePaymentStatus(InvoicePayment invoicePayment) throws AxelorException {
     Invoice invoice = invoicePayment.getInvoice();
     PaymentMode paymentMode = invoicePayment.getPaymentMode();
+    List<InvoiceTerm> invoiceTermList = new ArrayList<>();
     if (paymentMode == null) {
       throw new AxelorException(
           TraceBackRepository.CATEGORY_MISSING_FIELD,
           I18n.get(BankPaymentExceptionMessage.INVOICE_PAYMENT_MODE_MISSING),
           invoice.getInvoiceId());
     }
-
+    if (!CollectionUtils.isEmpty(invoicePayment.getInvoiceTermPaymentList())) {
+      invoiceTermList =
+          invoicePayment.getInvoiceTermPaymentList().stream()
+              .map(itp -> itp.getInvoiceTerm())
+              .collect(Collectors.toList());
+    }
     if (paymentModeService.isPendingPayment(paymentMode)
         && paymentMode.getGenerateBankOrder()
         && paymentMode.getAccountingTriggerSelect()
             != PaymentModeRepository.ACCOUNTING_TRIGGER_IMMEDIATE
         && invoicePayment.getStatusSelect() == InvoicePaymentRepository.STATUS_DRAFT) {
       invoicePayment.setStatusSelect(InvoicePaymentRepository.STATUS_PENDING);
+      invoiceTermService.setIsAwaitingPayment(invoiceTermList, true);
     } else {
       invoicePayment.setStatusSelect(InvoicePaymentRepository.STATUS_VALIDATED);
+      invoiceTermService.setIsAwaitingPayment(invoiceTermList, false);
     }
   }
 

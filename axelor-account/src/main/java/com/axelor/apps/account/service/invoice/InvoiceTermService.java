@@ -278,8 +278,6 @@ public interface InvoiceTermService {
 
   List<InvoiceTerm> filterNotAwaitingPayment(List<InvoiceTerm> invoiceTermList);
 
-  boolean isNotAwaitingPayment(InvoiceTerm invoiceTerm);
-
   boolean isEnoughAmountToPay(List<InvoiceTerm> invoiceTermList, BigDecimal amount, LocalDate date);
 
   BigDecimal computeParentTotal(Context context);
@@ -306,4 +304,6 @@ public interface InvoiceTermService {
   void toggle(List<InvoiceTerm> invoiceTermList, boolean value) throws AxelorException;
 
   BigDecimal roundUpLastInvoiceTerm(List<InvoiceTerm> invoiceTermList, BigDecimal total);
+
+  void setIsAwaitingPayment(List<InvoiceTerm> invoiceTermList, boolean isAwaitingPayment);
 }

@@ -135,7 +135,7 @@ public class PaymentSessionValidateServiceImpl implements PaymentSessionValidate
           return 1;
         } else if (invoiceTerm.getIsPaid()
             || invoiceTerm.getPaymentAmount().compareTo(invoiceTerm.getAmountRemaining()) > 0
-            || !invoiceTermService.isNotAwaitingPayment(invoiceTerm)) {
+            || invoiceTerm.getIsAwaitingPayment()) {
           return 2;
         }
       }
@@ -246,7 +246,7 @@ public class PaymentSessionValidateServiceImpl implements PaymentSessionValidate
     return invoiceTerm.getIsSelectedOnPaymentSession()
         && !invoiceTerm.getIsPaid()
         && invoiceTerm.getAmountRemaining().compareTo(invoiceTerm.getPaymentAmount()) >= 0
-        && invoiceTermService.isNotAwaitingPayment(invoiceTerm);
+        && !invoiceTerm.getIsAwaitingPayment();
   }
 
   protected PaymentSession processInvoiceTerm(

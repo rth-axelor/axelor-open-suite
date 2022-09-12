@@ -34,7 +34,6 @@ import com.axelor.apps.account.db.Reconcile;
 import com.axelor.apps.account.db.SubstitutePfpValidator;
 import com.axelor.apps.account.db.repo.AccountTypeRepository;
 import com.axelor.apps.account.db.repo.FinancialDiscountRepository;
-import com.axelor.apps.account.db.repo.InvoicePaymentRepository;
 import com.axelor.apps.account.db.repo.InvoiceRepository;
 import com.axelor.apps.account.db.repo.InvoiceTermRepository;
 import com.axelor.apps.account.db.repo.JournalTypeRepository;
@@ -69,7 +68,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -1269,26 +1267,9 @@ public class InvoiceTermServiceImpl implements InvoiceTermService {
   }
 
   public List<InvoiceTerm> filterNotAwaitingPayment(List<InvoiceTerm> invoiceTermList) {
-    return invoiceTermList.stream().filter(this::isNotAwaitingPayment).collect(Collectors.toList());
-  }
-
-  public boolean isNotAwaitingPayment(InvoiceTerm invoiceTerm) {
-    if (invoiceTerm == null) {
-      return false;
-    } else if (invoiceTerm.getInvoice() != null) {
-      Invoice invoice = invoiceTerm.getInvoice();
-
-      if (CollectionUtils.isNotEmpty(invoice.getInvoicePaymentList())) {
-        return invoice.getInvoicePaymentList().stream()
-            .filter(it -> it.getStatusSelect() == InvoicePaymentRepository.STATUS_PENDING)
-            .map(InvoicePayment::getInvoiceTermPaymentList)
-            .flatMap(Collection::stream)
-            .map(InvoiceTermPayment::getInvoiceTerm)
-            .noneMatch(it -> it.getId().equals(invoiceTerm.getId()));
-      }
-    }
-
-    return true;
+    return invoiceTermList.stream()
+        .filter(it -> !it.getIsAwaitingPayment())
+        .collect(Collectors.toList());
   }
 
   public boolean isEnoughAmountToPay(
@@ -1458,7 +1439,7 @@ public class InvoiceTermServiceImpl implements InvoiceTermService {
   public boolean isNotReadonlyExceptPfp(InvoiceTerm invoiceTerm) {
     return !invoiceTerm.getIsPaid()
         && invoiceTerm.getAmount().compareTo(invoiceTerm.getAmountRemaining()) == 0
-        && this.isNotAwaitingPayment(invoiceTerm);
+        && !invoiceTerm.getIsAwaitingPayment();
   }
 
   public LocalDate getDueDate(List<InvoiceTerm> invoiceTermList, LocalDate defaultDate) {
@@ -1491,5 +1472,16 @@ public class InvoiceTermServiceImpl implements InvoiceTermService {
     lastInvoiceTerm.setAmountRemaining(lastInvoiceTerm.getAmountRemaining().add(diff));
 
     return invoiceTermTotal.add(diff);
+  }
+
+  @Override
+  @Transactional
+  public void setIsAwaitingPayment(List<InvoiceTerm> invoiceTermList, boolean isAwaitingPayment) {
+    if (!CollectionUtils.isEmpty(invoiceTermList)) {
+      for (InvoiceTerm invoiceTerm : invoiceTermList) {
+        invoiceTerm.setIsAwaitingPayment(isAwaitingPayment);
+        invoiceTermRepo.save(invoiceTerm);
+      }
+    }
   }
 }
