@@ -202,7 +202,7 @@ public class InvoicePaymentValidateServiceImpl implements InvoicePaymentValidate
               invoice.getDueDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
     }
 
-    Account customerAccount;
+    Account customerAccount = null;
 
     Journal journal =
         paymentModeService.getPaymentModeJournal(paymentMode, company, companyBankDetails);
@@ -220,12 +220,15 @@ public class InvoicePaymentValidateServiceImpl implements InvoicePaymentValidate
       }
 
     } else {
-      if (CollectionUtils.isEmpty(invoiceMoveLines)) {
-        return null;
+      if (!CollectionUtils.isEmpty(invoiceMoveLines)) {
+        customerAccount = invoiceMoveLines.get(0).getAccount();
       }
-      customerAccount = invoiceMoveLines.get(0).getAccount();
     }
 
+    if (customerAccount == null) {
+      return null;
+    }
+    System.err.println(customerAccount);
     Move move =
         moveCreateService.createMove(
             journal,
@@ -251,6 +254,7 @@ public class InvoicePaymentValidateServiceImpl implements InvoicePaymentValidate
             .map(MoveLine::getAmountRemaining)
             .reduce(BigDecimal::add)
             .orElse(BigDecimal.ZERO);
+
     move = this.fillMove(invoicePayment, move, customerAccount, maxAmount);
     moveValidateService.accounting(move);
 

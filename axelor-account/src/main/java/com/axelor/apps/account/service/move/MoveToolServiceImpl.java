@@ -171,7 +171,8 @@ public class MoveToolServiceImpl implements MoveToolService {
     List<MoveLine> moveLines = Lists.newArrayList();
     if (!CollectionUtils.isEmpty(invoicePayment.getInvoiceTermPaymentList())) {
       for (InvoiceTermPayment invoiceTermPayment : invoicePayment.getInvoiceTermPaymentList()) {
-        if (!moveLines.contains(invoiceTermPayment.getInvoiceTerm().getMoveLine())) {
+        if (invoiceTermPayment.getInvoiceTerm().getMoveLine() != null
+            && !moveLines.contains(invoiceTermPayment.getInvoiceTerm().getMoveLine())) {
           moveLines.add(invoiceTermPayment.getInvoiceTerm().getMoveLine());
         }
       }
