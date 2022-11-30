@@ -24,6 +24,8 @@ import com.axelor.apps.account.db.MoveTemplateLine;
 import com.axelor.apps.account.db.MoveTemplateType;
 import com.axelor.apps.account.db.Tax;
 import com.axelor.apps.account.db.TaxLine;
+import com.axelor.apps.account.db.repo.AccountRepository;
+import com.axelor.apps.account.db.repo.AccountTypeRepository;
 import com.axelor.apps.account.db.repo.MoveRepository;
 import com.axelor.apps.account.db.repo.MoveTemplateLineRepository;
 import com.axelor.apps.account.db.repo.MoveTemplateRepository;
@@ -31,6 +33,7 @@ import com.axelor.apps.account.db.repo.MoveTemplateTypeRepository;
 import com.axelor.apps.account.service.analytic.AnalyticMoveLineService;
 import com.axelor.apps.account.service.moveline.MoveLineComputeAnalyticService;
 import com.axelor.apps.account.service.moveline.MoveLineCreateService;
+import com.axelor.apps.account.service.moveline.MoveLineTaxService;
 import com.axelor.apps.base.db.BankDetails;
 import com.axelor.apps.base.db.Partner;
 import com.axelor.apps.base.db.repo.PartnerRepository;
@@ -67,6 +70,7 @@ public class MoveTemplateService {
   protected TaxService taxService;
   protected BankDetailsService bankDetailsService;
   protected MoveTemplateRepository moveTemplateRepo;
+  protected MoveLineTaxService moveLineTaxService;
 
   protected List<String> exceptionsList;
 
@@ -81,7 +85,8 @@ public class MoveTemplateService {
       TaxService taxService,
       MoveLineComputeAnalyticService moveLineComputeAnalyticService,
       BankDetailsService bankDetailsService,
-      MoveTemplateRepository moveTemplateRepo) {
+      MoveTemplateRepository moveTemplateRepo,
+      MoveLineTaxService moveLineTaxService) {
     this.moveCreateService = moveCreateService;
     this.moveValidateService = moveValidateService;
     this.moveRepo = moveRepo;
@@ -92,6 +97,7 @@ public class MoveTemplateService {
     this.moveLineComputeAnalyticService = moveLineComputeAnalyticService;
     this.bankDetailsService = bankDetailsService;
     this.moveTemplateRepo = moveTemplateRepo;
+    this.moveLineTaxService = moveLineTaxService;
     this.exceptionsList = Lists.newArrayList();
   }
 
@@ -127,7 +133,6 @@ public class MoveTemplateService {
     return new ArrayList<>();
   }
 
-  @Transactional(rollbackOn = {Exception.class})
   public List<Long> generateMove(MoveTemplate moveTemplate, List<HashMap<String, Object>> dataList)
       throws AxelorException {
     List<Long> moveList = new ArrayList<>();
@@ -194,68 +199,76 @@ public class MoveTemplateService {
         int counter = 1;
 
         for (MoveTemplateLine moveTemplateLine : moveTemplate.getMoveTemplateLineList()) {
-          partner = null;
-          if (moveTemplateLine.getDebitCreditSelect().equals(MoveTemplateLineRepository.DEBIT)) {
-            isDebit = true;
-            if (moveTemplateLine.getHasPartnerToDebit()) {
-              partner = debitPartner;
+          if (!AccountTypeRepository.TYPE_TAX.equals(
+              moveTemplateLine.getAccount().getAccountType().getTechnicalTypeSelect())) {
+            partner = null;
+            if (moveTemplateLine.getDebitCreditSelect().equals(MoveTemplateLineRepository.DEBIT)) {
+              isDebit = true;
+              if (moveTemplateLine.getHasPartnerToDebit()) {
+                partner = debitPartner;
+              }
+            } else if (moveTemplateLine
+                .getDebitCreditSelect()
+                .equals(MoveTemplateLineRepository.CREDIT)) {
+              isDebit = false;
+              if (moveTemplateLine.getHasPartnerToCredit()) {
+                partner = creditPartner;
+              }
             }
-          } else if (moveTemplateLine
-              .getDebitCreditSelect()
-              .equals(MoveTemplateLineRepository.CREDIT)) {
-            isDebit = false;
-            if (moveTemplateLine.getHasPartnerToCredit()) {
-              partner = creditPartner;
+
+            BigDecimal amount =
+                moveBalance
+                    .multiply(moveTemplateLine.getPercentage())
+                    .divide(hundred, RoundingMode.HALF_UP);
+
+            MoveLine moveLine =
+                moveLineCreateService.createMoveLine(
+                    move,
+                    partner,
+                    moveTemplateLine.getAccount(),
+                    amount,
+                    isDebit,
+                    moveDate,
+                    moveDate,
+                    counter,
+                    origin,
+                    moveTemplateLine.getName());
+            move.getMoveLineList().add(moveLine);
+
+            Tax tax = moveTemplateLine.getTax();
+
+            if (tax != null) {
+              TaxLine taxLine = taxService.getTaxLine(tax, moveDate);
+              if (taxLine != null) {
+                moveLine.setTaxLine(taxLine);
+                moveLine.setTaxRate(taxLine.getValue());
+                moveLine.setTaxCode(tax.getCode());
+                if (AccountTypeRepository.TYPE_TAX.equals(
+                    moveLine.getAccount().getAccountType().getTechnicalTypeSelect())) {
+                  moveLine.setVatSystemSelect(AccountRepository.VAT_SYSTEM_DEFAULT);
+                } else {
+                  moveLine.setVatSystemSelect(moveLineTaxService.getVatSystem(move, moveLine));
+                }
+              }
             }
+            moveLine.setAnalyticDistributionTemplate(
+                moveTemplateLine.getAnalyticDistributionTemplate());
+            moveLineComputeAnalyticService.generateAnalyticMoveLines(moveLine);
+
+            counter++;
           }
-
-          BigDecimal amount =
-              moveBalance
-                  .multiply(moveTemplateLine.getPercentage())
-                  .divide(hundred, RoundingMode.HALF_UP);
-
-          MoveLine moveLine =
-              moveLineCreateService.createMoveLine(
-                  move,
-                  partner,
-                  moveTemplateLine.getAccount(),
-                  amount,
-                  isDebit,
-                  moveDate,
-                  moveDate,
-                  counter,
-                  origin,
-                  moveTemplateLine.getName());
-          move.getMoveLineList().add(moveLine);
-
-          Tax tax = moveTemplateLine.getTax();
-
-          if (tax != null) {
-            TaxLine taxLine = taxService.getTaxLine(tax, moveDate);
-            if (taxLine != null) {
-              moveLine.setTaxLine(taxLine);
-              moveLine.setTaxRate(taxLine.getValue());
-              moveLine.setTaxCode(tax.getCode());
-            }
-          }
-
-          moveLine.setAnalyticDistributionTemplate(
-              moveTemplateLine.getAnalyticDistributionTemplate());
-          moveLineComputeAnalyticService.generateAnalyticMoveLines(moveLine);
-
-          counter++;
         }
 
         manageAccounting(moveTemplate, move);
 
-        moveRepo.save(move);
+        manageTaxLines(move);
+
         moveList.add(move.getId());
       }
     }
     return moveList;
   }
 
-  @Transactional(rollbackOn = {Exception.class})
   public List<Long> generateMove(LocalDate moveDate, List<HashMap<String, Object>> moveTemplateList)
       throws AxelorException {
     List<Long> moveList = new ArrayList<>();
@@ -307,44 +320,47 @@ public class MoveTemplateService {
         int counter = 1;
 
         for (MoveTemplateLine moveTemplateLine : moveTemplate.getMoveTemplateLineList()) {
+          if (!AccountTypeRepository.TYPE_TAX.equals(
+              moveTemplateLine.getAccount().getAccountType().getTechnicalTypeSelect())) {
+            BigDecimal amount = moveTemplateLine.getDebit().add(moveTemplateLine.getCredit());
 
-          BigDecimal amount = moveTemplateLine.getDebit().add(moveTemplateLine.getCredit());
+            MoveLine moveLine =
+                moveLineCreateService.createMoveLine(
+                    move,
+                    moveTemplateLine.getPartner(),
+                    moveTemplateLine.getAccount(),
+                    amount,
+                    moveTemplateLine.getDebit().compareTo(BigDecimal.ZERO) > 0,
+                    moveDate,
+                    moveDate,
+                    counter,
+                    moveTemplate.getFullName(),
+                    moveTemplateLine.getName());
+            move.getMoveLineList().add(moveLine);
 
-          MoveLine moveLine =
-              moveLineCreateService.createMoveLine(
-                  move,
-                  moveTemplateLine.getPartner(),
-                  moveTemplateLine.getAccount(),
-                  amount,
-                  moveTemplateLine.getDebit().compareTo(BigDecimal.ZERO) > 0,
-                  moveDate,
-                  moveDate,
-                  counter,
-                  moveTemplate.getFullName(),
-                  moveTemplateLine.getName());
-          move.getMoveLineList().add(moveLine);
+            Tax tax = moveTemplateLine.getTax();
 
-          Tax tax = moveTemplateLine.getTax();
-
-          if (tax != null) {
-            TaxLine taxLine = taxService.getTaxLine(tax, moveDate);
-            if (taxLine != null) {
-              moveLine.setTaxLine(taxLine);
-              moveLine.setTaxRate(taxLine.getValue());
-              moveLine.setTaxCode(tax.getCode());
+            if (tax != null) {
+              TaxLine taxLine = taxService.getTaxLine(tax, moveDate);
+              if (taxLine != null) {
+                moveLine.setTaxLine(taxLine);
+                moveLine.setTaxRate(taxLine.getValue());
+                moveLine.setTaxCode(tax.getCode());
+                moveLine.setVatSystemSelect(moveLineTaxService.getVatSystem(move, moveLine));
+              }
             }
+
+            moveLine.setAnalyticDistributionTemplate(
+                moveTemplateLine.getAnalyticDistributionTemplate());
+            moveLineComputeAnalyticService.generateAnalyticMoveLines(moveLine);
+            counter++;
           }
-
-          moveLine.setAnalyticDistributionTemplate(
-              moveTemplateLine.getAnalyticDistributionTemplate());
-          moveLineComputeAnalyticService.generateAnalyticMoveLines(moveLine);
-
-          counter++;
         }
 
         manageAccounting(moveTemplate, move);
 
-        moveRepo.save(move);
+        manageTaxLines(move);
+
         moveList.add(move.getId());
       }
     }
@@ -385,12 +401,21 @@ public class MoveTemplateService {
   protected boolean checkValidityInPercentage(MoveTemplate moveTemplate) {
     BigDecimal debitPercent = BigDecimal.ZERO;
     BigDecimal creditPercent = BigDecimal.ZERO;
+    BigDecimal taxValue = BigDecimal.ONE;
     for (MoveTemplateLine line : moveTemplate.getMoveTemplateLineList()) {
-      LOG.debug("Adding percent: {}", line.getPercentage());
-      if (MoveTemplateLineRepository.DEBIT.equals(line.getDebitCreditSelect())) {
-        debitPercent = debitPercent.add(line.getPercentage());
-      } else {
-        creditPercent = creditPercent.add(line.getPercentage());
+      if (!AccountTypeRepository.TYPE_TAX.equals(
+          line.getAccount().getAccountType().getTechnicalTypeSelect())) {
+        LOG.debug("Adding percent: {}", line.getPercentage());
+        if (line.getTax() != null && line.getTax().getActiveTaxLine() != null) {
+          taxValue =
+              taxValue.add(line.getTax().getActiveTaxLine().getValue().divide(new BigDecimal(100)));
+        }
+        if (MoveTemplateLineRepository.DEBIT.equals(line.getDebitCreditSelect())) {
+          debitPercent = debitPercent.add(line.getPercentage().multiply(taxValue));
+        } else {
+          creditPercent = creditPercent.add(line.getPercentage().multiply(taxValue));
+        }
+        taxValue = BigDecimal.ONE;
       }
     }
 
@@ -408,9 +433,18 @@ public class MoveTemplateService {
   protected boolean checkValidityInAmount(MoveTemplate moveTemplate) {
     BigDecimal debit = BigDecimal.ZERO;
     BigDecimal credit = BigDecimal.ZERO;
+    BigDecimal taxValue = BigDecimal.ONE;
     for (MoveTemplateLine line : moveTemplate.getMoveTemplateLineList()) {
-      debit = debit.add(line.getDebit());
-      credit = credit.add(line.getCredit());
+      if (!AccountTypeRepository.TYPE_TAX.equals(
+          line.getAccount().getAccountType().getTechnicalTypeSelect())) {
+        if (line.getTax() != null && line.getTax().getActiveTaxLine() != null) {
+          taxValue =
+              taxValue.add(line.getTax().getActiveTaxLine().getValue().divide(new BigDecimal(100)));
+        }
+        debit = debit.add(line.getDebit().multiply(taxValue));
+        credit = credit.add(line.getCredit().multiply(taxValue));
+        taxValue = BigDecimal.ONE;
+      }
     }
 
     LOG.debug("Debit : {}, Credit : {}", debit, credit);
@@ -449,5 +483,9 @@ public class MoveTemplateService {
     values.put("$difference", difference);
 
     return values;
+  }
+
+  protected void manageTaxLines(Move move) throws AxelorException {
+    moveLineTaxService.autoTaxLineGenerate(move);
   }
 }
