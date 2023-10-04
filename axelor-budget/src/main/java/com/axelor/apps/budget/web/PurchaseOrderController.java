@@ -150,14 +150,15 @@ public class PurchaseOrderController {
 
       if (purchaseOrder != null
           && !CollectionUtils.isEmpty(purchaseOrder.getPurchaseOrderLineList())) {
-        boolean isBudgetFilled = false;
         for (PurchaseOrderLine purchaseOrderLine : purchaseOrder.getPurchaseOrderLineList()) {
           if (purchaseOrderLine.getBudget() != null
               || !CollectionUtils.isEmpty(purchaseOrderLine.getBudgetDistributionList())) {
-            isBudgetFilled = true;
+            return;
           }
         }
-        if (!isBudgetFilled) {
+        if (Beans.get(PurchaseOrderBudgetService.class).isAutoBudgetFilled(purchaseOrder)) {
+          return;
+        }
           Boolean isError = Beans.get(AppBudgetService.class).isMissingBudgetCheckError();
           if (isError != null) {
             if (isError) {
@@ -167,7 +168,6 @@ public class PurchaseOrderController {
             }
           }
         }
-      }
     } catch (Exception e) {
       TraceBackService.trace(response, e);
     }

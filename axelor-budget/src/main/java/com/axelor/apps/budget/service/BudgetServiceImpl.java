@@ -50,8 +50,10 @@ import com.axelor.apps.budget.db.repo.GlobalBudgetRepository;
 import com.axelor.apps.budget.exception.BudgetExceptionMessage;
 import com.axelor.apps.purchase.db.repo.PurchaseOrderRepository;
 import com.axelor.apps.sale.db.repo.SaleOrderRepository;
+import com.axelor.auth.AuthUtils;
 import com.axelor.common.ObjectUtils;
 import com.axelor.i18n.I18n;
+import com.axelor.inject.Beans;
 import com.axelor.utils.date.DateTool;
 import com.google.common.base.Strings;
 import com.google.inject.Inject;
@@ -82,6 +84,8 @@ public class BudgetServiceImpl implements BudgetService {
   protected BudgetDistributionRepository budgetDistributionRepository;
   protected AccountRepository accountRepo;
   protected AnalyticDistributionLineRepository analyticDistributionLineRepo;
+  protected BudgetToolsService budgetToolsService;
+  private final int RETURN_SCALE = 2;
 
   @Inject
   public BudgetServiceImpl(
@@ -94,7 +98,8 @@ public class BudgetServiceImpl implements BudgetService {
       AnalyticMoveLineService analyticMoveLineService,
       BudgetDistributionRepository budgetDistributionRepository,
       AccountRepository accountRepo,
-      AnalyticDistributionLineRepository analyticDistributionLineRepo) {
+      AnalyticDistributionLineRepository analyticDistributionLineRepo,
+      BudgetToolsService budgetToolsService) {
     this.budgetLineRepository = budgetLineRepository;
     this.budgetRepository = budgetRepository;
     this.budgetLevelRepository = budgetLevelRepository;
@@ -105,6 +110,7 @@ public class BudgetServiceImpl implements BudgetService {
     this.budgetDistributionRepository = budgetDistributionRepository;
     this.accountRepo = accountRepo;
     this.analyticDistributionLineRepo = analyticDistributionLineRepo;
+    this.budgetToolsService = budgetToolsService;
   }
 
   @Override
@@ -973,5 +979,65 @@ public class BudgetServiceImpl implements BudgetService {
     optBudget.setPeriodDurationSelect(0);
     generatePeriods(optBudget);
     return optBudget;
+  }
+
+  @Override
+  public boolean findBudgetWithAutoComputation(
+          Map<Account, List<AnalyticMoveLine>> analyticByAccount, Company company, LocalDate date) throws AxelorException {
+    if (ObjectUtils.isEmpty(analyticByAccount) || !budgetToolsService.checkBudgetKeyAndRole(company, AuthUtils.getUser()) || !checkBudgetKeyInConfig(company)) {
+      return false;
+    }
+    for (Map.Entry<Account, List<AnalyticMoveLine>> entry : analyticByAccount.entrySet()) {
+      List<AnalyticMoveLine> analyticMoveLineList = entry.getValue();
+      Account account = entry.getKey();
+
+      if (!CollectionUtils.isEmpty(analyticMoveLineList)) {
+        for (AnalyticMoveLine analyticMoveLine : analyticMoveLineList) {
+          String key = computeKey(account, company, analyticMoveLine);
+
+          if (!Strings.isNullOrEmpty(key)) {
+            Budget budget = findBudgetWithKey(key, date);
+
+            if (budget != null) {
+              GlobalBudget globalBudget = getGlobalBudgetUsingBudget(budget);
+              if (globalBudget != null && globalBudget.getAutomaticBudgetComputation()) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  @Override
+  public GlobalBudget getGlobalBudgetUsingBudget(Budget budget) {
+
+    if (budget == null) {
+      return null;
+    }
+
+    if (budget.getGlobalBudget() != null) {
+      return budget.getGlobalBudget();
+    }
+    if (budget.getBudgetLevel() != null) {
+      return getGlobalBudgetUsingBudgetLevel(budget.getBudgetLevel());
+    }
+
+    return null;
+  }
+
+  @Override
+  public GlobalBudget getGlobalBudgetUsingBudgetLevel(BudgetLevel budgetLevel) {
+    if (budgetLevel == null) {
+      return null;
+    }
+
+    if (budgetLevel.getGlobalBudget() != null) {
+      return budgetLevel.getGlobalBudget();
+    }
+
+    return getGlobalBudgetUsingBudgetLevel(budgetLevel.getParentBudgetLevel());
   }
 }

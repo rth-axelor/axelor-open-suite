@@ -18,6 +18,8 @@
  */
 package com.axelor.apps.budget.service.move;
 
+import com.axelor.apps.account.db.Account;
+import com.axelor.apps.account.db.AnalyticMoveLine;
 import com.axelor.apps.account.db.Move;
 import com.axelor.apps.account.db.MoveLine;
 import com.axelor.apps.account.db.repo.AccountTypeRepository;
@@ -30,6 +32,10 @@ import com.axelor.apps.budget.db.BudgetDistribution;
 import com.axelor.apps.budget.service.AppBudgetService;
 import com.axelor.apps.budget.service.BudgetAccountService;
 import com.axelor.apps.budget.service.BudgetDistributionService;
+import com.axelor.apps.budget.service.BudgetService;
+import com.axelor.apps.budget.service.BudgetToolsService;
+import com.axelor.auth.AuthUtils;
+import com.axelor.common.ObjectUtils;
 import com.google.common.base.Strings;
 import com.google.inject.Inject;
 import com.google.inject.servlet.RequestScoped;
@@ -50,6 +56,8 @@ public class MoveBudgetServiceImpl implements MoveBudgetService {
   protected BudgetAccountService budgetAccountService;
   protected MoveLineRepository moveLineRepo;
   protected AppBudgetService appBudgetService;
+  protected BudgetService budgetService;
+  protected BudgetToolsService budgetToolsService;
 
   @Inject
   public MoveBudgetServiceImpl(
@@ -58,7 +66,9 @@ public class MoveBudgetServiceImpl implements MoveBudgetService {
       BudgetDistributionService budgetDistributionService,
       BudgetAccountService budgetAccountService,
       MoveLineRepository moveLineRepo,
-      AppBudgetService appBudgetService) {
+      AppBudgetService appBudgetService,
+      BudgetService budgetService,
+      BudgetToolsService budgetToolsService) {
 
     this.moveLineBudgetService = moveLineBudgetService;
     this.budgetDistributionService = budgetDistributionService;
@@ -66,6 +76,8 @@ public class MoveBudgetServiceImpl implements MoveBudgetService {
     this.budgetAccountService = budgetAccountService;
     this.moveLineRepo = moveLineRepo;
     this.appBudgetService = appBudgetService;
+    this.budgetService = budgetService;
+    this.budgetToolsService = budgetToolsService;
   }
 
   @Override
@@ -122,7 +134,7 @@ public class MoveBudgetServiceImpl implements MoveBudgetService {
       }
       for (Map.Entry<Budget, BigDecimal> budgetEntry : amountPerBudgetMap.entrySet()) {
         budgetExceedAlert +=
-            budgetDistributionService.getBudgetExceedAlert(
+                budgetToolsService.getBudgetExceedAlert(
                 budgetEntry.getKey(), budgetEntry.getValue(), move.getDate());
       }
 
@@ -157,5 +169,42 @@ public class MoveBudgetServiceImpl implements MoveBudgetService {
                 && move.getStatusSelect() == MoveRepository.STATUS_DAYBOOK)
             || (!move.getJournal().getAllowAccountingDaybook()
                 && move.getStatusSelect() == MoveRepository.STATUS_NEW));
+  }
+
+  @Override
+  public boolean isAutoBudgetFilled(Move move) throws AxelorException {
+    if (CollectionUtils.isEmpty(move.getMoveLineList())) {
+      return false;
+    }
+
+    Map<Account, List<AnalyticMoveLine>> analyticByAccount = new HashMap<>();
+    for (MoveLine moveLine : move.getMoveLineList()) {
+      if (!ObjectUtils.isEmpty(moveLine.getAnalyticMoveLineList())) {
+        analyticByAccount.put(moveLine.getAccount(), moveLine.getAnalyticMoveLineList());
+      }
+    }
+
+    return budgetService.findBudgetWithAutoComputation(
+            analyticByAccount,
+            move.getCompany(),
+            move.getDate());
+  }
+
+  @Override
+  public void autoComputeBudgetDistribution(Move move) throws AxelorException {
+    if (CollectionUtils.isEmpty(move.getMoveLineList()) || move.getCompany() == null
+            || !budgetToolsService.checkBudgetKeyAndRole(move.getCompany(), AuthUtils.getUser())
+            || !budgetService.checkBudgetKeyInConfig(move.getCompany())) {
+      return;
+    }
+    for (MoveLine moveLine : move.getMoveLineList()) {
+      budgetDistributionService.autoComputeBudgetDistribution(
+              moveLine.getAnalyticMoveLineList(),
+              moveLine.getAccount(),
+              move.getCompany(),
+              move.getDate(),
+              moveLine.getCredit().add(moveLine.getDebit()),
+              moveLine);
+    }
   }
 }

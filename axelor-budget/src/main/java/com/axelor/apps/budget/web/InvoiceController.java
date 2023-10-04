@@ -92,21 +92,22 @@ public class InvoiceController {
       Invoice invoice = request.getContext().asType(Invoice.class);
 
       if (invoice != null && !CollectionUtils.isEmpty(invoice.getInvoiceLineList())) {
-        boolean isBudgetFilled = false;
         for (InvoiceLine invoiceLine : invoice.getInvoiceLineList()) {
           if (invoiceLine.getBudget() != null
               || !CollectionUtils.isEmpty(invoiceLine.getBudgetDistributionList())) {
-            isBudgetFilled = true;
+            return;
           }
         }
-        if (!isBudgetFilled) {
-          Boolean isError = Beans.get(AppBudgetService.class).isMissingBudgetCheckError();
-          if (isError != null) {
-            if (isError) {
-              response.setError(I18n.get(BudgetExceptionMessage.NO_BUDGET_VALUES_FOUND_ERROR));
-            } else {
-              response.setAlert(I18n.get(BudgetExceptionMessage.NO_BUDGET_VALUES_FOUND));
-            }
+        if (Beans.get(BudgetInvoiceService.class).isAutoBudgetFilled(invoice)) {
+          return;
+        }
+
+        Boolean isError = Beans.get(AppBudgetService.class).isMissingBudgetCheckError();
+        if (isError != null) {
+          if (isError) {
+            response.setError(I18n.get(BudgetExceptionMessage.NO_BUDGET_VALUES_FOUND_ERROR));
+          } else {
+            response.setAlert(I18n.get(BudgetExceptionMessage.NO_BUDGET_VALUES_FOUND));
           }
         }
       }

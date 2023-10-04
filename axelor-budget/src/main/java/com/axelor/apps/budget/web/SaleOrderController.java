@@ -24,6 +24,7 @@ import com.axelor.apps.budget.exception.BudgetExceptionMessage;
 import com.axelor.apps.budget.service.AppBudgetService;
 import com.axelor.apps.budget.service.BudgetService;
 import com.axelor.apps.budget.service.BudgetToolsService;
+import com.axelor.apps.budget.service.purchaseorder.PurchaseOrderBudgetService;
 import com.axelor.apps.budget.service.saleorder.SaleOrderBudgetService;
 import com.axelor.apps.budget.service.saleorder.SaleOrderLineBudgetService;
 import com.axelor.apps.budget.service.saleorder.SaleOrderLineBudgetServiceImpl;
@@ -118,10 +119,12 @@ public class SaleOrderController {
         for (SaleOrderLine saleOrderLine : saleOrder.getSaleOrderLineList()) {
           if (saleOrderLine.getBudget() != null
               || !CollectionUtils.isEmpty(saleOrderLine.getBudgetDistributionList())) {
-            isBudgetFilled = true;
+            return;
           }
         }
-        if (!isBudgetFilled) {
+        if (Beans.get(SaleOrderBudgetService.class).isAutoBudgetFilled(saleOrder)) {
+          return;
+        }
           Boolean isError = Beans.get(AppBudgetService.class).isMissingBudgetCheckError();
           if (isError != null) {
             if (isError) {
@@ -130,7 +133,6 @@ public class SaleOrderController {
               response.setAlert(I18n.get(BudgetExceptionMessage.NO_BUDGET_VALUES_FOUND));
             }
           }
-        }
       }
     } catch (Exception e) {
       TraceBackService.trace(response, e);

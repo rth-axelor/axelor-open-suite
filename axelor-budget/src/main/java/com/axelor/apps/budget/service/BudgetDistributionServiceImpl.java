@@ -28,6 +28,7 @@ import com.axelor.apps.base.db.Company;
 import com.axelor.apps.budget.db.Budget;
 import com.axelor.apps.budget.db.BudgetDistribution;
 import com.axelor.apps.budget.db.BudgetLine;
+import com.axelor.apps.budget.db.GlobalBudget;
 import com.axelor.apps.budget.db.repo.BudgetDistributionRepository;
 import com.axelor.apps.budget.db.repo.BudgetLevelRepository;
 import com.axelor.apps.budget.db.repo.BudgetRepository;
@@ -85,68 +86,6 @@ public class BudgetDistributionServiceImpl implements BudgetDistributionService 
     budgetDistribution.setAmount(amount);
 
     return budgetDistribution;
-  }
-
-  @Override
-  public String getBudgetExceedAlert(Budget budget, BigDecimal amount, LocalDate date) {
-
-    String budgetExceedAlert = "";
-
-    Integer budgetControlLevel = budgetLevelService.getBudgetControlLevel(budget);
-    if (budget == null || budgetControlLevel == null) {
-      return budgetExceedAlert;
-    }
-    BigDecimal budgetToCompare = BigDecimal.ZERO;
-    String budgetName = budget.getName();
-
-    switch (budgetControlLevel) {
-      case BudgetLevelRepository.BUDGET_LEVEL_AVAILABLE_AMOUNT_BUDGET_LINE:
-        for (BudgetLine budgetLine : budget.getBudgetLineList()) {
-          if (DateTool.isBetween(budgetLine.getFromDate(), budgetLine.getToDate(), date)) {
-            budgetToCompare = budgetLine.getAvailableAmount();
-            budgetName +=
-                ' ' + budgetLine.getFromDate().toString() + ':' + budgetLine.getToDate().toString();
-            break;
-          }
-        }
-        break;
-      case BudgetLevelRepository.BUDGET_LEVEL_AVAILABLE_AMOUNT_BUDGET:
-        budgetToCompare = budget.getAvailableAmount();
-        break;
-      case BudgetLevelRepository.BUDGET_LEVEL_AVAILABLE_AMOUNT_BUDGET_SECTION:
-        budgetToCompare = budget.getBudgetLevel().getTotalAmountAvailable();
-        budgetName = budget.getBudgetLevel().getName();
-        break;
-      case BudgetLevelRepository.BUDGET_LEVEL_AVAILABLE_AMOUNT_BUDGET_GROUP:
-        budgetToCompare = budget.getBudgetLevel().getParentBudgetLevel().getTotalAmountAvailable();
-        budgetName = budget.getBudgetLevel().getParentBudgetLevel().getName();
-        break;
-      default:
-        budgetToCompare =
-            budget
-                .getBudgetLevel()
-                .getParentBudgetLevel()
-                .getParentBudgetLevel()
-                .getTotalAmountAvailable();
-        budgetName =
-            budget.getBudgetLevel().getParentBudgetLevel().getParentBudgetLevel().getName();
-        break;
-    }
-    if (budgetToCompare.compareTo(amount) < 0) {
-      budgetExceedAlert =
-          String.format(
-              I18n.get(BudgetExceptionMessage.BUGDET_EXCEED_ERROR),
-              budgetName,
-              budgetToCompare,
-              budget
-                  .getBudgetLevel()
-                  .getParentBudgetLevel()
-                  .getParentBudgetLevel()
-                  .getCompany()
-                  .getCurrency()
-                  .getSymbol());
-    }
-    return budgetExceedAlert;
   }
 
   @Override
@@ -302,4 +241,35 @@ public class BudgetDistributionServiceImpl implements BudgetDistributionService 
 
     return query;
   }
+
+  @Override
+  public void autoComputeBudgetDistribution(
+          List<AnalyticMoveLine> analyticMoveLineList,
+          Account account,
+          Company company,
+          LocalDate date,
+          BigDecimal amount,
+          AuditableModel object){
+    if (ObjectUtils.isEmpty(analyticMoveLineList)) {
+      return;
+    }
+      for (AnalyticMoveLine analyticMoveLine : analyticMoveLineList) {
+        String key = budgetService.computeKey(account, company, analyticMoveLine);
+
+        if (!Strings.isNullOrEmpty(key)) {
+          Budget budget = budgetService.findBudgetWithKey(key, date);
+
+          if (budget != null) {
+            GlobalBudget globalBudget = budgetService.getGlobalBudgetUsingBudget(budget);
+            if (globalBudget != null && globalBudget.getAutomaticBudgetComputation()){
+              BudgetDistribution budgetDistribution =
+                      createDistributionFromBudget(
+                              budget,
+                              amount
+                                      .multiply(analyticMoveLine.getPercentage())
+                                      .divide(new BigDecimal(100))
+                                      .setScale(RETURN_SCALE, RoundingMode.HALF_UP));
+              linkBudgetDistributionWithParent(budgetDistribution, object);
+            }
+  }}}}
 }

@@ -21,7 +21,11 @@ package com.axelor.apps.budget.service;
 import com.axelor.apps.account.db.Move;
 import com.axelor.apps.base.AxelorException;
 import com.axelor.apps.base.db.Company;
+import com.axelor.apps.budget.db.Budget;
 import com.axelor.auth.db.User;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 public interface BudgetToolsService {
 
@@ -35,4 +39,21 @@ public interface BudgetToolsService {
   boolean checkBudgetKeyAndRole(Company company, User user) throws AxelorException;
 
   boolean checkBudgetKeyAndRoleForMove(Move move) throws AxelorException;
+
+  /**
+   * Check amount with budget available amount watching config for budget and return an error
+   * message if needed
+   *
+   * @param budget, amount, date
+   * @return String
+   */
+  public String getBudgetExceedAlert(Budget budget, BigDecimal amount, LocalDate date);
+
+  /**
+   * Return the global budget check available select
+   *
+   * @param budget
+   * @return Integer
+   */
+  public Integer getBudgetControlLevel(Budget budget);
 }

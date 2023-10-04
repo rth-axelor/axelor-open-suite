@@ -18,6 +18,8 @@
  */
 package com.axelor.apps.budget.service.saleorder;
 
+import com.axelor.apps.account.db.Account;
+import com.axelor.apps.account.db.AnalyticMoveLine;
 import com.axelor.apps.account.db.Invoice;
 import com.axelor.apps.account.db.InvoiceLine;
 import com.axelor.apps.account.db.repo.InvoiceRepository;
@@ -42,6 +44,7 @@ import com.axelor.apps.supplychain.service.SaleInvoicingStateService;
 import com.axelor.apps.supplychain.service.app.AppSupplychainService;
 import com.axelor.apps.supplychain.service.invoice.InvoiceServiceSupplychainImpl;
 import com.axelor.apps.supplychain.service.invoice.generator.InvoiceLineOrderService;
+import com.axelor.common.ObjectUtils;
 import com.axelor.meta.CallMethod;
 import com.google.common.base.Strings;
 import com.google.inject.Inject;
@@ -285,5 +288,24 @@ public class SaleOrderBudgetServiceImpl extends SaleOrderInvoiceProjectServiceIm
       }
     }
     return budgetExceedAlert;
+  }
+
+  @Override
+  public boolean isAutoBudgetFilled(SaleOrder order) throws AxelorException {
+    if (CollectionUtils.isEmpty(order.getSaleOrderLineList())) {
+      return false;
+    }
+
+    Map<Account, List<AnalyticMoveLine>> analyticByAccount = new HashMap<>();
+    for (SaleOrderLine orderLine : order.getSaleOrderLineList()) {
+      if (!ObjectUtils.isEmpty(orderLine.getAnalyticMoveLineList())) {
+        analyticByAccount.put(orderLine.getAccount(), orderLine.getAnalyticMoveLineList());
+      }
+    }
+
+    return budgetService.findBudgetWithAutoComputation(
+            analyticByAccount,
+            order.getCompany(),
+            order.getOrderDate());
   }
 }

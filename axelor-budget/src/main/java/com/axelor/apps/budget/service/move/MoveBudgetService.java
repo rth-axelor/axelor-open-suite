@@ -58,4 +58,8 @@ public interface MoveBudgetService {
    * @return boolean
    */
   boolean checkMissingBudgetDistributionOnAccountedMove(Move move);
+
+  boolean isAutoBudgetFilled(Move move) throws AxelorException;
+
+  void autoComputeBudgetDistribution(Move move) throws AxelorException;
 }

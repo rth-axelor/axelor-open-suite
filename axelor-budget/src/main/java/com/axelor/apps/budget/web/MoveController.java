@@ -25,6 +25,7 @@ import com.axelor.apps.budget.exception.BudgetExceptionMessage;
 import com.axelor.apps.budget.service.AppBudgetService;
 import com.axelor.apps.budget.service.BudgetService;
 import com.axelor.apps.budget.service.BudgetToolsService;
+import com.axelor.apps.budget.service.invoice.BudgetInvoiceService;
 import com.axelor.apps.budget.service.move.MoveBudgetService;
 import com.axelor.auth.AuthUtils;
 import com.axelor.i18n.I18n;
@@ -72,7 +73,12 @@ public class MoveController {
     try {
       Move move = request.getContext().asType(Move.class);
       MoveBudgetService moveBudgetService = Beans.get(MoveBudgetService.class);
-      if (moveBudgetService.checkMissingBudgetDistributionOnAccountedMove(move)) {
+      if (!moveBudgetService.checkMissingBudgetDistributionOnAccountedMove(move)) {
+        return;
+      }
+      if (moveBudgetService.isAutoBudgetFilled(move)) {
+        return;
+      }
         Boolean isError = Beans.get(AppBudgetService.class).isMissingBudgetCheckError();
         if (isError != null) {
           if (isError) {
@@ -81,7 +87,6 @@ public class MoveController {
             response.setAlert(I18n.get(BudgetExceptionMessage.NO_BUDGET_VALUES_FOUND));
           }
         }
-      }
     } catch (Exception e) {
       TraceBackService.trace(response, e);
     }

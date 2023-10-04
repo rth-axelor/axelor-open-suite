@@ -18,6 +18,8 @@
  */
 package com.axelor.apps.budget.service.invoice;
 
+import com.axelor.apps.account.db.Account;
+import com.axelor.apps.account.db.AnalyticMoveLine;
 import com.axelor.apps.account.db.Invoice;
 import com.axelor.apps.account.db.InvoiceLine;
 import com.axelor.apps.account.db.repo.InvoiceLineRepository;
@@ -47,9 +49,11 @@ import com.axelor.apps.budget.service.AppBudgetService;
 import com.axelor.apps.budget.service.BudgetDistributionService;
 import com.axelor.apps.budget.service.BudgetLineService;
 import com.axelor.apps.budget.service.BudgetService;
+import com.axelor.apps.budget.service.BudgetToolsService;
 import com.axelor.apps.businessproject.service.InvoiceServiceProjectImpl;
 import com.axelor.apps.stock.db.repo.StockMoveRepository;
 import com.axelor.apps.supplychain.service.IntercoService;
+import com.axelor.auth.AuthUtils;
 import com.axelor.common.ObjectUtils;
 import com.axelor.message.service.TemplateMessageService;
 import com.axelor.meta.CallMethod;
@@ -77,6 +81,7 @@ public class BudgetInvoiceServiceImpl extends InvoiceServiceProjectImpl
   protected BudgetService budgetService;
   protected BudgetLineService budgetLineService;
   protected AppBudgetService appBudgetService;
+  protected BudgetToolsService budgetToolsService;
 
   @Inject
   public BudgetInvoiceServiceImpl(
@@ -104,7 +109,8 @@ public class BudgetInvoiceServiceImpl extends InvoiceServiceProjectImpl
       BudgetDistributionService budgetDistributionService,
       BudgetService budgetService,
       BudgetLineService budgetLineService,
-      AppBudgetService appBudgetService) {
+      AppBudgetService appBudgetService,
+      BudgetToolsService budgetToolsService) {
     super(
         validateFactory,
         ventilateFactory,
@@ -131,6 +137,7 @@ public class BudgetInvoiceServiceImpl extends InvoiceServiceProjectImpl
     this.budgetService = budgetService;
     this.budgetLineService = budgetLineService;
     this.appBudgetService = appBudgetService;
+    this.budgetToolsService = budgetToolsService;
   }
 
   @Override
@@ -150,6 +157,28 @@ public class BudgetInvoiceServiceImpl extends InvoiceServiceProjectImpl
       invoiceRepo.save(invoice);
     }
     return String.join(", ", alertMessageTokenList);
+  }
+
+  @Override
+  public boolean isAutoBudgetFilled(Invoice invoice) throws AxelorException {
+    if (CollectionUtils.isEmpty(invoice.getInvoiceLineList())) {
+      return false;
+    }
+
+    Map<Account, List<AnalyticMoveLine>> analyticByAccount = new HashMap<>();
+    for (InvoiceLine invoiceLine : invoice.getInvoiceLineList()) {
+      if (!ObjectUtils.isEmpty(invoiceLine.getAnalyticMoveLineList())) {
+        analyticByAccount.put(invoiceLine.getAccount(), invoiceLine.getAnalyticMoveLineList());
+      }
+    }
+
+    return budgetService.findBudgetWithAutoComputation(
+        analyticByAccount,
+        invoice.getCompany(),
+        invoice.getInvoiceDate() != null
+            ? invoice.getInvoiceDate()
+            : invoice.getCreatedOn().toLocalDate()
+            );
   }
 
   @Override
@@ -211,7 +240,7 @@ public class BudgetInvoiceServiceImpl extends InvoiceServiceProjectImpl
           }
           for (Map.Entry<Budget, BigDecimal> budgetEntry : amountPerBudgetMap.entrySet()) {
             budgetExceedAlert +=
-                budgetDistributionService.getBudgetExceedAlert(
+                budgetToolsService.getBudgetExceedAlert(
                     budgetEntry.getKey(),
                     budgetEntry.getValue(),
                     invoice.getInvoiceDate() != null
@@ -229,7 +258,7 @@ public class BudgetInvoiceServiceImpl extends InvoiceServiceProjectImpl
             }
 
             budgetExceedAlert +=
-                budgetDistributionService.getBudgetExceedAlert(
+                budgetToolsService.getBudgetExceedAlert(
                     budget,
                     amountPerBudgetMap.get(budget),
                     invoice.getInvoiceDate() != null
@@ -438,4 +467,25 @@ public class BudgetInvoiceServiceImpl extends InvoiceServiceProjectImpl
     return budgetDistributionList.stream()
         .anyMatch(budgetDistribution -> budget.equals(budgetDistribution.getBudget()));
   }
+
+  @Override
+  public void autoComputeBudgetDistribution(Invoice invoice) throws AxelorException {
+    if (CollectionUtils.isEmpty(invoice.getInvoiceLineList()) || invoice.getCompany() == null
+            || !budgetToolsService.checkBudgetKeyAndRole(invoice.getCompany(), AuthUtils.getUser())
+            || !budgetService.checkBudgetKeyInConfig(invoice.getCompany())) {
+      return;
+    }
+      for (InvoiceLine invoiceLine : invoice.getInvoiceLineList()) {
+        budgetDistributionService.autoComputeBudgetDistribution(
+                        invoiceLine.getAnalyticMoveLineList(),
+                        invoiceLine.getAccount(),
+                        invoice.getCompany(),
+                        invoice.getInvoiceDate() != null
+                                ? invoice.getInvoiceDate()
+                                : invoice.getCreatedOn().toLocalDate(),
+                        invoiceLine.getCompanyExTaxTotal(),
+                        invoiceLine);
+      }
+    }
+
 }

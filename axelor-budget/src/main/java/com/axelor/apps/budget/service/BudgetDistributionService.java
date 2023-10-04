@@ -40,15 +40,6 @@ public interface BudgetDistributionService {
   public BudgetDistribution createDistributionFromBudget(Budget budget, BigDecimal bigDecimal);
 
   /**
-   * Check amount with budget available amount watching config for budget and return an error
-   * message if needed
-   *
-   * @param budget, amount, date
-   * @return String
-   */
-  public String getBudgetExceedAlert(Budget budget, BigDecimal amount, LocalDate date);
-
-  /**
    * For all lines in invoice, compute paid amount field in all related budgets and save them
    *
    * @param invoice, ratio
@@ -68,4 +59,12 @@ public interface BudgetDistributionService {
       BudgetDistribution budgetDistribution, LocalDate computeDate);
 
   String getBudgetDomain(Company company, LocalDate date, String technicalTypeSelect);
+
+  void autoComputeBudgetDistribution(
+          List<AnalyticMoveLine> analyticMoveLineList,
+          Account account,
+          Company company,
+          LocalDate date,
+          BigDecimal amount,
+          AuditableModel object);
 }

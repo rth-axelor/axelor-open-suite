@@ -105,6 +105,7 @@ public class WorkflowVentilationBudgetServiceImpl extends WorkflowVentilationPro
     super.afterVentilation(invoice);
 
     if (appBudgetService.getAppBudget() != null) {
+      budgetInvoiceService.autoComputeBudgetDistribution(invoice);
       budgetInvoiceService.updateBudgetLinesFromInvoice(invoice);
     }
   }

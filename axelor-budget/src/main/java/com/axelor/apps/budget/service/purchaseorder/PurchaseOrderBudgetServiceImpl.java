@@ -18,6 +18,8 @@
  */
 package com.axelor.apps.budget.service.purchaseorder;
 
+import com.axelor.apps.account.db.Account;
+import com.axelor.apps.account.db.AnalyticMoveLine;
 import com.axelor.apps.account.db.repo.AnalyticMoveLineRepository;
 import com.axelor.apps.account.service.app.AppAccountService;
 import com.axelor.apps.base.AxelorException;
@@ -38,6 +40,7 @@ import com.axelor.apps.purchase.service.app.AppPurchaseService;
 import com.axelor.apps.supplychain.service.PurchaseOrderStockService;
 import com.axelor.apps.supplychain.service.PurchaseOrderSupplychainService;
 import com.axelor.apps.supplychain.service.app.AppSupplychainService;
+import com.axelor.common.ObjectUtils;
 import com.axelor.meta.CallMethod;
 import com.axelor.studio.db.AppBudget;
 import com.google.common.base.Strings;
@@ -333,5 +336,24 @@ public class PurchaseOrderBudgetServiceImpl extends PurchaseOrderWorkflowService
                 });
       }
     }
+  }
+
+  @Override
+  public boolean isAutoBudgetFilled(PurchaseOrder order) throws AxelorException {
+    if (CollectionUtils.isEmpty(order.getPurchaseOrderLineList())) {
+      return false;
+    }
+
+    Map<Account, List<AnalyticMoveLine>> analyticByAccount = new HashMap<>();
+    for (PurchaseOrderLine orderLine : order.getPurchaseOrderLineList()) {
+      if (!ObjectUtils.isEmpty(orderLine.getAnalyticMoveLineList())) {
+        analyticByAccount.put(orderLine.getAccount(), orderLine.getAnalyticMoveLineList());
+      }
+    }
+
+    return budgetService.findBudgetWithAutoComputation(
+            analyticByAccount,
+            order.getCompany(),
+            order.getOrderDate());
   }
 }

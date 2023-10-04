@@ -323,4 +323,11 @@ public interface BudgetService {
       GlobalBudget global,
       Map<String, Object> variableAmountMap)
       throws AxelorException;
+
+  boolean findBudgetWithAutoComputation(
+      Map<Account, List<AnalyticMoveLine>> analyticByAccount, Company company, LocalDate date) throws AxelorException;
+
+  GlobalBudget getGlobalBudgetUsingBudget(Budget budget);
+
+  GlobalBudget getGlobalBudgetUsingBudgetLevel(BudgetLevel budgetLevel);
 }

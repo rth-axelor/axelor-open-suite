@@ -36,4 +36,6 @@ public interface SaleOrderBudgetService {
 
   @CallMethod
   String getBudgetExceedAlert(SaleOrder saleOrder);
+
+    boolean isAutoBudgetFilled(SaleOrder order) throws AxelorException;
 }
