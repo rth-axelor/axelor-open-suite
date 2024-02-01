@@ -52,6 +52,7 @@ import com.google.inject.Inject;
 import com.google.inject.persist.Transactional;
 import com.google.inject.servlet.RequestScoped;
 import java.io.IOException;
+import java.util.Optional;
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;
 
@@ -199,5 +200,18 @@ public class InvoicePaymentValidateServiceBankPayImpl extends InvoicePaymentVali
     if (invoicePayment.getPaymentMode().getAutoConfirmBankOrder()) {
       bankOrderService.confirm(bankOrder);
     }
+  }
+
+  @Override
+  public String getOriginFromInvoicePayment(InvoicePayment invoicePayment) {
+    Optional<String> bankOrderSeq =
+        Optional.of(invoicePayment)
+            .map(InvoicePayment::getBankOrder)
+            .map(BankOrder::getBankOrderSeq);
+    if (bankOrderSeq.isPresent()) {
+      return bankOrderSeq.get();
+    }
+
+    return super.getOriginFromInvoicePayment(invoicePayment);
   }
 }

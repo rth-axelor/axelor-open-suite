@@ -492,7 +492,7 @@ public class PaymentSessionValidateServiceImpl implements PaymentSessionValidate
             null,
             MoveRepository.TECHNICAL_ORIGIN_AUTOMATIC,
             MoveRepository.FUNCTIONAL_ORIGIN_PAYMENT,
-            paymentSession.getSequence(),
+            getMoveOrigin(paymentSession),
             "",
             paymentSession.getBankDetails());
 
@@ -504,9 +504,16 @@ public class PaymentSessionValidateServiceImpl implements PaymentSessionValidate
     return move;
   }
 
+  // Will be override in bank payment module
+  @Override
+  public String getMoveOrigin(PaymentSession paymentSession) {
+    return paymentSession.getSequence();
+  }
+
   protected String getMoveDescription(PaymentSession paymentSession, BigDecimal amount) {
     return String.format(
-        "%s - %s%s",
+        "%s %s - %s%s",
+        paymentSession.getSequence(),
         paymentSession.getName(),
         amount,
         paymentSession.getCurrency() == null ? "" : paymentSession.getCurrency().getCode());
@@ -733,7 +740,8 @@ public class PaymentSessionValidateServiceImpl implements PaymentSessionValidate
       partner = partnerRepo.find(partner.getId());
     }
 
-    this.generateMoveLine(move, partner, cashAccount, paymentAmount, null, description, !out);
+    this.generateMoveLine(
+        move, partner, cashAccount, paymentAmount, move.getOrigin(), description, !out);
 
     return moveRepo.save(move);
   }
@@ -1083,7 +1091,7 @@ public class PaymentSessionValidateServiceImpl implements PaymentSessionValidate
               invoiceTerm.getMoveLine().getPartner(),
               pairMoveLine.getAccount(),
               pair.getRight(),
-              pairMoveLine.getOrigin(),
+              move.getOrigin(),
               this.getMoveLineDescription(paymentSession),
               !out);
     }
