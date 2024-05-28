@@ -22,10 +22,12 @@ import com.axelor.apps.account.db.AccountConfig;
 import com.axelor.apps.account.db.Invoice;
 import com.axelor.apps.account.db.InvoicePayment;
 import com.axelor.apps.account.db.MoveLine;
+import com.axelor.apps.account.db.repo.AccountTypeRepository;
 import com.axelor.apps.account.db.repo.MoveLineRepository;
 import com.axelor.apps.account.db.repo.MoveRepository;
 import com.axelor.apps.account.service.config.AccountConfigService;
 import com.axelor.apps.account.service.invoice.InvoiceService;
+import com.axelor.apps.account.service.moveline.MoveLineToolService;
 import com.axelor.apps.base.AxelorException;
 import com.axelor.apps.base.db.Company;
 import com.axelor.inject.Beans;
@@ -33,6 +35,7 @@ import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -44,13 +47,15 @@ public class MoveExcessPaymentService {
 
   protected MoveLineRepository moveLineRepository;
   protected MoveToolService moveToolService;
+  protected MoveLineToolService moveLineToolService;
 
   @Inject
   public MoveExcessPaymentService(
-      MoveLineRepository moveLineRepository, MoveToolService moveToolService) {
+      MoveLineRepository moveLineRepository, MoveToolService moveToolService, MoveLineToolService moveLineToolService) {
 
     this.moveLineRepository = moveLineRepository;
     this.moveToolService = moveToolService;
+    this.moveLineToolService = moveLineToolService;
   }
 
   /**
@@ -75,19 +80,7 @@ public class MoveExcessPaymentService {
     }
 
     if (accountConfig.getAutoReconcileOnInvoice()) {
-      List<MoveLine> creditMoveLines =
-          moveLineRepository
-              .all()
-              .filter(
-                  "self.move.company = ?1 AND (self.move.statusSelect = ?2 OR self.move.statusSelect = ?3) AND self.move.ignoreInAccountingOk IN (false,null)"
-                      + " AND self.account.useForPartnerBalance = ?4 AND self.credit > 0 and self.amountRemaining != 0"
-                      + " AND self.partner = ?5 ORDER BY self.date ASC",
-                  company,
-                  MoveRepository.STATUS_ACCOUNTED,
-                  MoveRepository.STATUS_DAYBOOK,
-                  true,
-                  invoice.getPartner())
-              .fetch();
+      List<MoveLine> creditMoveLines = moveLineToolService.getMoveExcessDueList(true, company, invoice.getPartner(), invoice.getId());
 
       log.debug("Number of overpayment to attribute to the invoice : {}", creditMoveLines.size());
       advancePaymentMoveLines.addAll(creditMoveLines);
