@@ -9,7 +9,6 @@ import com.axelor.apps.stock.db.repo.StockMoveLineRepository;
 import com.axelor.apps.stock.db.repo.StockMoveRepository;
 import com.axelor.apps.stock.exception.StockExceptionMessage;
 import com.axelor.apps.stock.interfaces.massstockmove.MassStockMovableProduct;
-import com.axelor.apps.stock.service.StockLocationLineService;
 import com.axelor.apps.stock.service.StockMoveLineService;
 import com.axelor.apps.stock.service.StockMoveService;
 import com.axelor.i18n.I18n;
@@ -35,7 +34,6 @@ public class MassStockMovableProductServiceImpl implements MassStockMovableProdu
       StockMoveLineService stockMoveLineService,
       StockLocationLineRepository stockLocationLineRepository,
       MassStockMovableProductServiceFactory massStockMovableProductServiceFactory,
-      StockLocationLineService stockLocationLineService,
       MassStockMovableProductQuantityService massStockMovableProductQuantityService) {
     this.stockMoveService = stockMoveService;
     this.appBaseService = appBaseService;
@@ -72,15 +70,16 @@ public class MassStockMovableProductServiceImpl implements MassStockMovableProdu
       MassStockMovableProductLocationService locationService)
       throws AxelorException {
 
-    processingService.preRealize(movableProduct);
-
     var massStockMove = movableProduct.getMassStockMove();
     var fromStockLocation = locationService.getFromStockLocation(movableProduct);
     var toStockLocation = locationService.getToStockLocation(movableProduct);
     var todayDate = appBaseService.getTodayDate(massStockMove.getCompany());
 
     if (movableProduct.getStockMoveLine() == null) {
+      checkStockLocations(movableProduct, toStockLocation, fromStockLocation);
       checkQty(movableProduct, fromStockLocation);
+
+      processingService.preRealize(movableProduct);
 
       var stockMove =
           stockMoveService.createStockMove(
@@ -110,10 +109,34 @@ public class MassStockMovableProductServiceImpl implements MassStockMovableProdu
       stockMoveService.realize(stockMove);
       movableProduct.setStockMoveLine(stockMoveLine);
 
-      processingService.save(movableProduct);
-
       processingService.postRealize(movableProduct);
+
+      processingService.save(movableProduct);
     }
+  }
+
+  protected void checkStockLocations(
+      MassStockMovableProduct movableProduct,
+      StockLocation toStockLocation,
+      StockLocation fromStockLocation)
+      throws AxelorException {
+    if (toStockLocation == null || fromStockLocation == null) {
+      throw new AxelorException(
+          TraceBackRepository.CATEGORY_INCONSISTENCY,
+          I18n.get(
+              StockExceptionMessage.STOCK_MOVE_MASS_PRODUCT_NO_STOCK_LOCATION_SOURCE_AVAILABLE),
+          movableProduct.getProduct().getFullName());
+    }
+  }
+
+  @Transactional(rollbackOn = Exception.class)
+  protected void realizeAndUpdateQty(
+      MassStockMovableProduct movableProduct,
+      MassStockMovableProductProcessingService processingService,
+      MassStockMovableProductLocationService locationService)
+      throws AxelorException {
+
+    this.realize(movableProduct, processingService, locationService);
   }
 
   @Override
@@ -167,17 +190,10 @@ public class MassStockMovableProductServiceImpl implements MassStockMovableProdu
           movableProduct.getProduct().getFullName());
     }
 
-    if (movableProduct.getMovedQty().compareTo(BigDecimal.ZERO) == 0) {
+    if (movableProduct.getMovedQty().compareTo(BigDecimal.ZERO) <= 0) {
       throw new AxelorException(
           TraceBackRepository.CATEGORY_INCONSISTENCY,
-          I18n.get(StockExceptionMessage.STOCK_MOVE_MASS_MOVED_QUANTITY_IS_ZERO),
-          movableProduct.getProduct().getFullName());
-    }
-
-    if (movableProduct.getMovedQty().compareTo(movableProduct.getCurrentQty()) > 0) {
-      throw new AxelorException(
-          TraceBackRepository.CATEGORY_INCONSISTENCY,
-          I18n.get(StockExceptionMessage.STOCK_MOVE_MASS_MOVED_QTY_GREATER_THAN_CURRENT_QTY),
+          I18n.get(StockExceptionMessage.STOCK_MOVE_MASS_MOVED_QUANTITY_IS_ZERO_OR_LESS),
           movableProduct.getProduct().getFullName());
     }
   }
