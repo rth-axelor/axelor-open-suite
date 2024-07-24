@@ -52,6 +52,7 @@ import com.axelor.apps.sale.db.repo.SaleOrderManagementRepository;
 import com.axelor.apps.sale.service.AdvancePaymentServiceImpl;
 import com.axelor.apps.sale.service.PartnerSaleServiceImpl;
 import com.axelor.apps.sale.service.saleorder.OpportunitySaleOrderServiceImpl;
+import com.axelor.apps.sale.service.saleorder.SaleOrderCheckServiceImpl;
 import com.axelor.apps.sale.service.saleorder.SaleOrderComputeServiceImpl;
 import com.axelor.apps.sale.service.saleorder.SaleOrderCreateServiceImpl;
 import com.axelor.apps.sale.service.saleorder.SaleOrderFinalizeServiceImpl;
@@ -169,6 +170,7 @@ import com.axelor.apps.supplychain.service.ReservedQtyService;
 import com.axelor.apps.supplychain.service.ReservedQtyServiceImpl;
 import com.axelor.apps.supplychain.service.SaleInvoicingStateService;
 import com.axelor.apps.supplychain.service.SaleInvoicingStateServiceImpl;
+import com.axelor.apps.supplychain.service.SaleOrderCheckSupplychainServiceImpl;
 import com.axelor.apps.supplychain.service.SaleOrderComputeServiceSupplychainImpl;
 import com.axelor.apps.supplychain.service.SaleOrderCreateServiceSupplychainImpl;
 import com.axelor.apps.supplychain.service.SaleOrderCreateSupplychainService;
@@ -260,6 +262,7 @@ import com.axelor.apps.supplychain.service.invoice.SubscriptionInvoiceService;
 import com.axelor.apps.supplychain.service.invoice.SubscriptionInvoiceServiceImpl;
 import com.axelor.apps.supplychain.service.invoice.generator.InvoiceLineOrderService;
 import com.axelor.apps.supplychain.service.invoice.generator.InvoiceLineOrderServiceImpl;
+import com.axelor.apps.supplychain.service.observer.SaleOrderLineSupplychainObserver;
 import com.axelor.apps.supplychain.service.workflow.WorkflowCancelServiceSupplychainImpl;
 import com.axelor.apps.supplychain.service.workflow.WorkflowVentilationServiceSupplychainImpl;
 import com.axelor.apps.supplychain.utils.StockLocationUtilsServiceSupplychain;
@@ -427,5 +430,7 @@ public class SupplychainModule extends AxelorModule {
     bind(SaleOrderLineDomainSupplychainService.class)
         .to(SaleOrderLineDomainSupplychainServiceImpl.class);
     bind(SaleOrderTaxNumberService.class).to(SaleOrderTaxNumberServiceImpl.class);
+    bind(SaleOrderCheckServiceImpl.class).to(SaleOrderCheckSupplychainServiceImpl.class);
+    bind(SaleOrderLineSupplychainObserver.class);
   }
 }
