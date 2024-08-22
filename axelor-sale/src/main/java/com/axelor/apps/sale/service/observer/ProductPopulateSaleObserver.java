@@ -16,17 +16,20 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.axelor.apps.sale.service;
+package com.axelor.apps.sale.service.observer;
 
-import com.axelor.apps.base.AxelorException;
-import com.axelor.apps.base.db.Company;
-import com.axelor.apps.base.db.Currency;
-import com.axelor.apps.base.db.Partner;
-import com.axelor.apps.sale.db.SaleOrder;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.axelor.apps.base.service.event.ProductPopulate;
+import com.axelor.apps.sale.service.app.AppSaleService;
+import com.axelor.event.Observes;
+import com.axelor.inject.Beans;
+import java.util.Map;
 
-public interface SaleOrderGeneratorService {
-  SaleOrder createSaleOrder(
-      Partner clientPartner, Company company, Partner contactPartner, Currency currency)
-      throws AxelorException, JsonProcessingException;
+public class ProductPopulateSaleObserver {
+
+  void populate(@Observes ProductPopulate event) {
+    Map<String, Object> json = event.getJson();
+    json.put(
+        "$isCartManagementEnabled",
+        Beans.get(AppSaleService.class).getAppSale().getIsCartManagementEnabled());
+  }
 }
