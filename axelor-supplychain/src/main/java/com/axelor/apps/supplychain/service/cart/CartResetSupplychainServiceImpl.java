@@ -16,29 +16,25 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.axelor.apps.sale.service;
+package com.axelor.apps.supplychain.service.cart;
 
-import com.axelor.apps.base.service.MapService;
-import com.axelor.apps.base.service.address.AddressServiceImpl;
-import com.axelor.apps.sale.db.SaleOrder;
-import com.axelor.db.JPA;
-import com.axelor.utils.helpers.address.AddressHelper;
+import com.axelor.apps.sale.db.Cart;
+import com.axelor.apps.sale.db.repo.CartRepository;
+import com.axelor.apps.sale.service.cart.CartResetServiceImpl;
 import com.google.inject.Inject;
+import com.google.inject.persist.Transactional;
 
-public class AddressServiceSaleImpl extends AddressServiceImpl {
-  static {
-    registerCheckUsedFunc(AddressServiceSaleImpl::checkAddressUsedSale);
-  }
+public class CartResetSupplychainServiceImpl extends CartResetServiceImpl {
 
   @Inject
-  public AddressServiceSaleImpl(AddressHelper ads, MapService mapService) {
-    super(ads, mapService);
+  public CartResetSupplychainServiceImpl(CartRepository cartRepository) {
+    super(cartRepository);
   }
 
-  private static boolean checkAddressUsedSale(Long addressId) {
-    return JPA.all(SaleOrder.class)
-            .filter("self.mainInvoicingAddress.id = ?1 OR self.deliveryAddress.id = ?1", addressId)
-            .fetchOne()
-        != null;
+  @Override
+  @Transactional(rollbackOn = Exception.class)
+  public void emptyCart(Cart cart) {
+    cart.setStockLocation(null);
+    super.emptyCart(cart);
   }
 }
