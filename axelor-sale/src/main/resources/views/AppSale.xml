@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <object-views xmlns="http://axelor.com/xml/ns/object-views"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://axelor.com/xml/ns/object-views http://axelor.com/xml/ns/object-views/object-views_7.1.xsd">
+  xsi:schemaLocation="http://axelor.com/xml/ns/object-views http://axelor.com/xml/ns/object-views/object-views_7.2.xsd">
 
   <form name="app-sale-config-form" title="App sale" model="com.axelor.studio.db.AppSale"
     canDelete="false" canNew="false" width="large" onLoad="action-sale-attrs-set-hidden">
@@ -35,7 +35,7 @@
       <help><![CDATA[Standard: Display sale order lines the classic way.<br>Editable: This configuration enables you to activate an editable grid on quotation / sales order lines, allowing you to quickly add and complete quotation lines from the grid view.<br>Editable tree: Activate multi-level sale order lines.]]></help>
       <field name="listDisplayTypeSelect" widget="RadioSelect" colSpan="6"/>
       <field name="isDiscountEnabledOnEditableGrid" widget="boolean-switch"
-        showIf="listDisplayTypeSelect == 2" colSpan="6"/>
+        showIf="listDisplayTypeSelect == 1" colSpan="6"/>
     </panel>
     <panel name="actionsPanel">
       <button name="generateSaleConfigurationsBtn" colSpan="4"
