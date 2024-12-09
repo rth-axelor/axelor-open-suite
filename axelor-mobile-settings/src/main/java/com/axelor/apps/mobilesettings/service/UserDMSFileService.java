@@ -16,16 +16,14 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.axelor.apps.production.service;
+package com.axelor.apps.mobilesettings.service;
 
-import com.axelor.apps.base.AxelorException;
-import com.axelor.apps.production.db.BillOfMaterial;
-import com.axelor.apps.sale.db.SaleOrder;
-import com.axelor.apps.sale.db.SaleOrderLine;
-import java.util.List;
+import com.axelor.auth.db.User;
+import com.axelor.dms.db.DMSFile;
 
-public interface SaleOrderLineBomService {
+public interface UserDMSFileService {
 
-  List<SaleOrderLine> createSaleOrderLinesFromBom(
-      BillOfMaterial billOfMaterial, SaleOrder saleOrder) throws AxelorException;
+  void addDMSFileToFavorites(DMSFile dmsFile, User user);
+
+  void removeDMSFileFromFavorites(DMSFile dmsFile, User user);
 }
