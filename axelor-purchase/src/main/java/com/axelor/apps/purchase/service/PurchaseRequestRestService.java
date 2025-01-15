@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2025 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2024 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -16,23 +16,14 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.axelor.apps.hr.service.leave;
+package com.axelor.apps.purchase.service;
 
-import com.axelor.apps.hr.db.Employee;
-import com.axelor.apps.hr.db.LeaveRequest;
-import com.axelor.auth.db.User;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
+import com.axelor.apps.base.AxelorException;
+import com.axelor.apps.purchase.db.PurchaseRequest;
+import com.axelor.apps.purchase.rest.dto.PurchaseRequestPostRequest;
 
-public interface LeaveRequestService {
-  List<LeaveRequest> getLeaves(Employee employee, LocalDate date);
+public interface PurchaseRequestRestService {
 
-  boolean willHaveEnoughDays(LeaveRequest leaveRequest);
-
-  String getLeaveCalendarDomain(User user);
-
-  boolean isLeaveDay(Employee employee, LocalDate date);
-
-  BigDecimal getLeaveDaysToDate(LeaveRequest leaveRequest);
+  public PurchaseRequest createPurchaseRequest(PurchaseRequestPostRequest requestBody)
+      throws AxelorException;
 }
