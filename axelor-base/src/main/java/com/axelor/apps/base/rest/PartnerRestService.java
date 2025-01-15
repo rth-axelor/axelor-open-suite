@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2025 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2024 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -16,14 +16,12 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.axelor.apps.hr.service.expense;
+package com.axelor.apps.base.rest;
 
-import com.axelor.apps.base.AxelorException;
-import com.axelor.apps.hr.db.Expense;
-import com.axelor.message.db.Message;
+import com.axelor.apps.base.db.Address;
+import com.axelor.apps.base.db.Partner;
 
-public interface ExpenseCancellationService {
-  void cancel(Expense expense) throws AxelorException;
+public interface PartnerRestService {
 
-  Message sendCancellationEmail(Expense expense) throws AxelorException;
+  public void addPartnerAddress(Partner partner, Address address);
 }
