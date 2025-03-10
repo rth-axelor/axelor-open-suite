@@ -18,11 +18,9 @@
  */
 package com.axelor.apps.production.service;
 
-import com.axelor.apps.base.AxelorException;
-import com.axelor.apps.production.db.ProdProcess;
-import java.math.BigDecimal;
+import com.axelor.apps.production.db.BillOfMaterial;
 
-public interface ProdProcessComputationService {
+public interface BillOfMaterialDummyService {
 
-  long getLeadTime(ProdProcess prodProcess, BigDecimal qty) throws AxelorException;
+  boolean getIsUsedInSaleOrder(BillOfMaterial billOfMaterial);
 }

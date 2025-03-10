@@ -16,13 +16,21 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.axelor.apps.production.service;
+package com.axelor.apps.businessproduction.web;
 
 import com.axelor.apps.base.AxelorException;
-import com.axelor.apps.production.db.ProdProcess;
-import java.math.BigDecimal;
+import com.axelor.apps.businessproduction.service.SaleOrderProductionSyncBusinessService;
+import com.axelor.apps.sale.db.SaleOrderLine;
+import com.axelor.inject.Beans;
+import com.axelor.rpc.ActionRequest;
+import com.axelor.rpc.ActionResponse;
 
-public interface ProdProcessComputationService {
+public class SaleOrderLineBusinessProductionController {
+  public void solDetailsListOnChange(ActionRequest request, ActionResponse response)
+      throws AxelorException {
+    SaleOrderLine saleOrderLine = request.getContext().asType(SaleOrderLine.class);
 
-  long getLeadTime(ProdProcess prodProcess, BigDecimal qty) throws AxelorException;
+    Beans.get(SaleOrderProductionSyncBusinessService.class).syncSaleOrderLine(saleOrderLine);
+    response.setValues(saleOrderLine);
+  }
 }
