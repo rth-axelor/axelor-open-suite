@@ -66,6 +66,8 @@ import com.axelor.apps.production.service.BillOfMaterialService;
 import com.axelor.apps.production.service.BillOfMaterialServiceImpl;
 import com.axelor.apps.production.service.BomLineCreationService;
 import com.axelor.apps.production.service.BomLineCreationServiceImpl;
+import com.axelor.apps.production.service.BomTreeRemoveService;
+import com.axelor.apps.production.service.BomTreeRemoveServiceImpl;
 import com.axelor.apps.production.service.MpsChargeService;
 import com.axelor.apps.production.service.MpsChargeServiceImpl;
 import com.axelor.apps.production.service.MpsWeeklyScheduleService;
@@ -242,6 +244,14 @@ import com.axelor.apps.production.service.productionorder.ProductionOrderUpdateS
 import com.axelor.apps.production.service.productionorder.ProductionOrderUpdateServiceImpl;
 import com.axelor.apps.production.service.productionorder.ProductionOrderWizardService;
 import com.axelor.apps.production.service.productionorder.ProductionOrderWizardServiceImpl;
+import com.axelor.apps.production.service.productionorder.manuforder.ManufOrderGenerationService;
+import com.axelor.apps.production.service.productionorder.manuforder.ManufOrderGenerationServiceImpl;
+import com.axelor.apps.production.service.productionorder.manuforder.SaleOrderLineMOGenerationMultiLineService;
+import com.axelor.apps.production.service.productionorder.manuforder.SaleOrderLineMOGenerationMultiLineServiceImpl;
+import com.axelor.apps.production.service.productionorder.manuforder.SaleOrderLineMOGenerationService;
+import com.axelor.apps.production.service.productionorder.manuforder.SaleOrderLineMOGenerationServiceImpl;
+import com.axelor.apps.production.service.productionorder.manuforder.SaleOrderLineMOGenerationSingleLineService;
+import com.axelor.apps.production.service.productionorder.manuforder.SaleOrderLineMOGenerationSingleLineServiceImpl;
 import com.axelor.apps.production.service.saleorder.onchange.SaleOrderOnLineChangeProductionServiceImpl;
 import com.axelor.apps.purchase.service.PurchaseOrderTypeSelectServiceImpl;
 import com.axelor.apps.sale.service.configurator.ConfiguratorCreatorImportServiceImpl;
@@ -424,11 +434,18 @@ public class ProductionModule extends AxelorModule {
         .to(SaleOrderLineDummyProductionServiceImpl.class);
     bind(ProdProcessComputationService.class).to(ProdProcessComputationServiceImpl.class);
     bind(BillOfMaterialDummyService.class).to(BillOfMaterialDummyServiceImpl.class);
+    bind(BomTreeRemoveService.class).to(BomTreeRemoveServiceImpl.class);
     bind(SaleOrderLineDetailsProdProcessService.class)
         .to(SaleOrderLineDetailsProdProcessServiceImpl.class);
     bind(SolDetailsProdProcessLineMappingService.class)
         .to(SolDetailsProdProcessLineMappingServiceImpl.class);
     bind(ProdProcessLineHourlyCostComputeService.class)
         .to(ProdProcessLineHourlyCostComputeServiceImpl.class);
+    bind(ManufOrderGenerationService.class).to(ManufOrderGenerationServiceImpl.class);
+    bind(SaleOrderLineMOGenerationService.class).to(SaleOrderLineMOGenerationServiceImpl.class);
+    bind(SaleOrderLineMOGenerationSingleLineService.class)
+        .to(SaleOrderLineMOGenerationSingleLineServiceImpl.class);
+    bind(SaleOrderLineMOGenerationMultiLineService.class)
+        .to(SaleOrderLineMOGenerationMultiLineServiceImpl.class);
   }
 }
