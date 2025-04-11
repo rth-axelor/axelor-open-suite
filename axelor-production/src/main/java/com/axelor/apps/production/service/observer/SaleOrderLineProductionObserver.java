@@ -20,6 +20,7 @@ package com.axelor.apps.production.service.observer;
 
 import com.axelor.apps.base.AxelorException;
 import com.axelor.apps.production.service.SaleOrderLineProductProductionService;
+import com.axelor.apps.production.service.SaleOrderLineProductionOnLoadService;
 import com.axelor.apps.production.service.SaleOrderLineViewProductionService;
 import com.axelor.apps.sale.db.SaleOrder;
 import com.axelor.apps.sale.db.SaleOrderLine;
@@ -42,8 +43,8 @@ public class SaleOrderLineProductionObserver {
     SaleOrderLine saleOrderLine = event.getSaleOrderLine();
     Map<String, Map<String, Object>> saleOrderLineMap = event.getSaleOrderLineMap();
     saleOrderLineMap.putAll(
-        Beans.get(SaleOrderLineViewProductionService.class)
-            .getProductionOnLoadAttrs(saleOrderLine, saleOrderLine.getSaleOrder()));
+        Beans.get(SaleOrderLineProductionOnLoadService.class)
+            .getProductionOnLoadAttrs(saleOrderLine, event.getSaleOrder()));
   }
 
   void onSaleOrderLineProductOnChange(@Observes SaleOrderLineProductOnChange event)
