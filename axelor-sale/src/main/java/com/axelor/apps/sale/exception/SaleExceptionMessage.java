@@ -48,6 +48,8 @@ public final class SaleExceptionMessage {
       "The fiscal position must be the same for all sale orders" /*)*/;
   public static final String SALE_ORDER_MERGE_ERROR_TAX_NUMBER = /*$$(*/
       "The tax number must be the same for all sale orders" /*)*/;
+  public static final String SALE_ORDER_MERGE_ERROR_ATI_CONFIG = /*$$(*/
+      "The ATI configuration must be the same for all sale orders" /*)*/;
   public static final String SALE_ORDER_MERGE_LIST_EMPTY = /*$$(*/
       "List of sale orders to merge is empty" /*)*/;
 
@@ -204,4 +206,7 @@ public final class SaleExceptionMessage {
 
   public static final String SALE_QUOTATION_CONFIRM_CHECK_ORDERED_QTY = /*$$(*/
       "One of the lines has its quantity inferior to its ordered quantity." /*)*/;
+
+  public static final String SALE_QUOTATION_DELETE_LINE_WITH_ORDERED_QTY_ERROR = /*$$(*/
+      "You can not delete lines with an ordered quantity superior to 0." /*)*/;
 }
