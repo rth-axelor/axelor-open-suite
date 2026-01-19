@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2025 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2026 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,6 +27,7 @@ import com.axelor.apps.account.db.PaymentScheduleLine;
 import com.axelor.apps.account.db.Reconcile;
 import com.axelor.apps.account.db.repo.InvoicePaymentRepository;
 import com.axelor.apps.account.db.repo.MoveLineRepository;
+import com.axelor.apps.account.exception.AccountExceptionMessage;
 import com.axelor.apps.account.service.app.AppAccountService;
 import com.axelor.apps.account.service.invoice.AdvancePaymentMoveLineCreateService;
 import com.axelor.apps.account.service.move.MoveInvoiceTermService;
@@ -36,14 +37,19 @@ import com.axelor.apps.account.util.TaxConfiguration;
 import com.axelor.apps.base.AxelorException;
 import com.axelor.apps.base.db.Company;
 import com.axelor.apps.base.db.Partner;
+import com.axelor.apps.base.db.repo.TraceBackRepository;
+import com.axelor.apps.base.exceptions.BaseExceptionMessage;
 import com.axelor.apps.base.service.CurrencyService;
 import com.axelor.apps.base.service.administration.AbstractBatch;
 import com.axelor.apps.base.service.app.AppBaseService;
 import com.axelor.apps.base.service.exception.TraceBackService;
+import com.axelor.common.ObjectUtils;
 import com.axelor.db.JPA;
-import com.google.inject.Inject;
+import com.axelor.i18n.I18n;
 import com.google.inject.persist.Transactional;
 import com.google.inject.servlet.RequestScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.Query;
 import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -53,7 +59,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import javax.persistence.Query;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,14 +125,17 @@ public class PaymentServiceImpl implements PaymentService {
    * @param creditMoveLines
    */
   @Override
-  public void useExcessPaymentOnMoveLinesDontThrow(
+  public int useExcessPaymentOnMoveLinesDontThrow(
       List<MoveLine> debitMoveLines, List<MoveLine> creditMoveLines) {
+    int errorNumber = 0;
     try {
-      useExcessPaymentOnMoveLines(debitMoveLines, creditMoveLines, true);
+      errorNumber = useExcessPaymentOnMoveLines(debitMoveLines, creditMoveLines, true);
     } catch (Exception e) {
       TraceBackService.trace(e);
       log.debug(e.getMessage());
     }
+
+    return errorNumber;
   }
 
   /**
@@ -139,72 +147,76 @@ public class PaymentServiceImpl implements PaymentService {
    * @param dontThrow
    * @throws AxelorException
    */
-  protected void useExcessPaymentOnMoveLines(
+  protected int useExcessPaymentOnMoveLines(
       List<MoveLine> debitMoveLines, List<MoveLine> creditMoveLines, boolean dontThrow)
       throws AxelorException {
+    int errorNumber = 0;
 
-    if (debitMoveLines != null && creditMoveLines != null) {
+    if (ObjectUtils.isEmpty(debitMoveLines) || ObjectUtils.isEmpty(creditMoveLines)) {
+      return errorNumber;
+    }
+
+    log.debug(
+        "Overpayment usage (debit move lines : {}, credit move lines : {})",
+        new Object[] {debitMoveLines.size(), creditMoveLines.size()});
+
+    BigDecimal debitTotalRemaining = BigDecimal.ZERO;
+    BigDecimal creditTotalRemaining = BigDecimal.ZERO;
+    for (MoveLine creditMoveLine : creditMoveLines) {
+
+      log.debug("Overpayment usage : credit move line : {})", creditMoveLine);
 
       log.debug(
-          "Overpayment usage (debit move lines : {}, credit move lines : {})",
-          new Object[] {debitMoveLines.size(), creditMoveLines.size()});
+          "Overpayment usage : credit move line (remaining to pay): {})",
+          creditMoveLine.getAmountRemaining().abs());
+      creditTotalRemaining = creditTotalRemaining.add(creditMoveLine.getAmountRemaining().abs());
+    }
+    for (MoveLine debitMoveLine : debitMoveLines) {
 
-      BigDecimal debitTotalRemaining = BigDecimal.ZERO;
-      BigDecimal creditTotalRemaining = BigDecimal.ZERO;
-      for (MoveLine creditMoveLine : creditMoveLines) {
+      log.debug("Overpayment usage : debit move line : {})", debitMoveLine);
 
-        log.debug("Overpayment usage : credit move line : {})", creditMoveLine);
+      log.debug(
+          "Overpayment usage : debit move line (remaining to pay): {})",
+          debitMoveLine.getAmountRemaining());
+      debitTotalRemaining = debitTotalRemaining.add(debitMoveLine.getAmountRemaining());
+    }
 
-        log.debug(
-            "Overpayment usage : credit move line (remaining to pay): {})",
-            creditMoveLine.getAmountRemaining().abs());
-        creditTotalRemaining = creditTotalRemaining.add(creditMoveLine.getAmountRemaining().abs());
-      }
+    int i = 0;
+
+    for (MoveLine creditMoveLine : creditMoveLines) {
+      creditMoveLine = moveLineRepository.find(creditMoveLine.getId());
       for (MoveLine debitMoveLine : debitMoveLines) {
+        debitMoveLine = moveLineRepository.find(debitMoveLine.getId());
 
-        log.debug("Overpayment usage : debit move line : {})", debitMoveLine);
+        if (creditMoveLine.getAmountRemaining().abs().compareTo(BigDecimal.ZERO) > 0
+            && debitMoveLine.getAmountRemaining().abs().compareTo(BigDecimal.ZERO) > 0) {
+          i++;
 
-        log.debug(
-            "Overpayment usage : debit move line (remaining to pay): {})",
-            debitMoveLine.getAmountRemaining());
-        debitTotalRemaining = debitTotalRemaining.add(debitMoveLine.getAmountRemaining());
-      }
+          try {
+            createReconcile(
+                debitMoveLine, creditMoveLine, debitTotalRemaining, creditTotalRemaining);
 
-      int i = 0;
+            if (creditMoveLine.getAmountRemaining().signum() == 0) {
+              break;
+            }
 
-      for (MoveLine creditMoveLine : creditMoveLines) {
-        creditMoveLine = moveLineRepository.find(creditMoveLine.getId());
-        for (MoveLine debitMoveLine : debitMoveLines) {
-          debitMoveLine = moveLineRepository.find(debitMoveLine.getId());
-
-          if (creditMoveLine.getAmountRemaining().abs().compareTo(BigDecimal.ZERO) > 0
-              && debitMoveLine.getAmountRemaining().abs().compareTo(BigDecimal.ZERO) > 0) {
-            i++;
-
-            try {
-              createReconcile(
-                  debitMoveLine, creditMoveLine, debitTotalRemaining, creditTotalRemaining);
-
-              if (creditMoveLine.getAmountRemaining().signum() == 0) {
-                break;
-              }
-
-            } catch (Exception e) {
-              if (dontThrow) {
-                TraceBackService.trace(e);
-                log.debug(e.getMessage());
-              } else {
-                throw e;
-              }
-            } finally {
-              if (i % 10 == 0) {
-                JPA.clear();
-              }
+          } catch (Exception e) {
+            if (dontThrow) {
+              TraceBackService.trace(e);
+              log.debug(e.getMessage());
+            } else {
+              throw e;
+            }
+          } finally {
+            if (i % 10 == 0) {
+              JPA.clear();
             }
           }
         }
       }
     }
+
+    return errorNumber;
   }
 
   /**
@@ -600,13 +612,7 @@ public class PaymentServiceImpl implements PaymentService {
   @Override
   public boolean reconcileMoveLinesWithCompatibleAccounts(List<MoveLine> moveLineList)
       throws AxelorException {
-    if (moveLineList.size() == 2
-        && !moveLineList.get(0).getAccount().equals(moveLineList.get(1).getAccount())
-        && moveLineList
-            .get(0)
-            .getAccount()
-            .getCompatibleAccountSet()
-            .contains(moveLineList.get(1).getAccount())) {
+    if (moveLineList.size() == 2) {
       MoveLine creditMoveLine = null;
       MoveLine debitMoveLine = null;
 
@@ -621,6 +627,12 @@ public class PaymentServiceImpl implements PaymentService {
       }
 
       if (creditMoveLine != null && debitMoveLine != null) {
+        if (!ReconcileService.isReconcilable(debitMoveLine, creditMoveLine)) {
+          throw new AxelorException(
+              TraceBackRepository.CATEGORY_CONFIGURATION_ERROR,
+              I18n.get(AccountExceptionMessage.RECONCILE_2),
+              I18n.get(BaseExceptionMessage.EXCEPTION));
+        }
         reconcileService.reconcile(debitMoveLine, creditMoveLine, true, true);
         return true;
       }

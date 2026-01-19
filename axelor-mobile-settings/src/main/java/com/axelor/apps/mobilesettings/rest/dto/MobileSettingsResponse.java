@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2025 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2026 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,6 +29,7 @@ public class MobileSettingsResponse extends ResponseStructure {
   protected final List<MobileConfigResponse> apps;
   protected final Boolean isLoginUserQrcodeEnabled;
   protected final Boolean isTrackerMessageEnabled;
+  protected final Boolean isInboxAccessEnabled;
   protected final Boolean isInventoryValidationEnabled;
   protected final Boolean isStockCorrectionValidationEnabled;
   protected final Boolean isCustomerDeliveryLineAdditionEnabled;
@@ -47,6 +48,7 @@ public class MobileSettingsResponse extends ResponseStructure {
   protected final Boolean isEditionOfDateAllowed;
   protected final Boolean isTimesheetProjectInvoicingEnabled;
   protected final Boolean isStockLocationManagementEnabled;
+  protected final Boolean isSimplifiedStockMoveLineDisplayEnabled;
   protected final Boolean isOneLineShortcut;
   protected final String minimalRequiredMobileAppVersion;
   protected final List<String> fieldsToShowOnTimesheet;
@@ -64,12 +66,15 @@ public class MobileSettingsResponse extends ResponseStructure {
   protected final Boolean isFolderCreationAllowed;
   protected final Boolean isFileCreationAllowed;
   protected final Boolean isFileDeletionAllowed;
+  protected final List<Long> freightCarrierModeTrackingIds;
+  protected final Long defaultQiDetectionId;
 
   public MobileSettingsResponse(
       Integer version,
       List<MobileConfigResponse> apps,
       Boolean isLoginUserQrcodeEnabled,
       Boolean isTrackerMessageEnabled,
+      Boolean isInboxAccessEnabled,
       Boolean isInventoryValidationEnabled,
       Boolean isStockCorrectionValidationEnabled,
       Boolean isCustomerDeliveryLineAdditionEnabled,
@@ -88,6 +93,7 @@ public class MobileSettingsResponse extends ResponseStructure {
       Boolean isEditionOfDateAllowed,
       Boolean isTimesheetProjectInvoicingEnabled,
       Boolean isStockLocationManagementEnabled,
+      Boolean isSimplifiedStockMoveLineDisplayEnabled,
       Boolean isOneLineShortcut,
       String minimalRequiredMobileAppVersion,
       List<String> fieldsToShowOnTimesheet,
@@ -104,11 +110,14 @@ public class MobileSettingsResponse extends ResponseStructure {
       Boolean isRenamingAllowed,
       Boolean isFolderCreationAllowed,
       Boolean isFileCreationAllowed,
-      Boolean isFileDeletionAllowed) {
+      Boolean isFileDeletionAllowed,
+      List<Long> freightCarrierModeTrackingIds,
+      Long defaultQiDetectionId) {
     super(version);
     this.apps = apps;
     this.isLoginUserQrcodeEnabled = isLoginUserQrcodeEnabled;
     this.isTrackerMessageEnabled = isTrackerMessageEnabled;
+    this.isInboxAccessEnabled = isInboxAccessEnabled;
     this.isInventoryValidationEnabled = isInventoryValidationEnabled;
     this.isStockCorrectionValidationEnabled = isStockCorrectionValidationEnabled;
     this.isCustomerDeliveryLineAdditionEnabled = isCustomerDeliveryLineAdditionEnabled;
@@ -127,6 +136,7 @@ public class MobileSettingsResponse extends ResponseStructure {
     this.isEditionOfDateAllowed = isEditionOfDateAllowed;
     this.isTimesheetProjectInvoicingEnabled = isTimesheetProjectInvoicingEnabled;
     this.isStockLocationManagementEnabled = isStockLocationManagementEnabled;
+    this.isSimplifiedStockMoveLineDisplayEnabled = isSimplifiedStockMoveLineDisplayEnabled;
     this.isOneLineShortcut = isOneLineShortcut;
     this.minimalRequiredMobileAppVersion = minimalRequiredMobileAppVersion;
     this.fieldsToShowOnTimesheet = fieldsToShowOnTimesheet;
@@ -144,6 +154,8 @@ public class MobileSettingsResponse extends ResponseStructure {
     this.isFolderCreationAllowed = isFolderCreationAllowed;
     this.isFileCreationAllowed = isFileCreationAllowed;
     this.isFileDeletionAllowed = isFileDeletionAllowed;
+    this.freightCarrierModeTrackingIds = freightCarrierModeTrackingIds;
+    this.defaultQiDetectionId = defaultQiDetectionId;
   }
 
   public List<MobileConfigResponse> getApps() {
@@ -158,6 +170,11 @@ public class MobileSettingsResponse extends ResponseStructure {
   @JsonProperty(value = "isTrackerMessageEnabled")
   public Boolean getTrackerMessageEnabled() {
     return isTrackerMessageEnabled;
+  }
+
+  @JsonProperty(value = "isInboxAccessEnabled")
+  public Boolean getInboxAccessEnabled() {
+    return isInboxAccessEnabled;
   }
 
   @JsonProperty(value = "isInventoryValidationEnabled")
@@ -250,6 +267,11 @@ public class MobileSettingsResponse extends ResponseStructure {
     return isStockLocationManagementEnabled;
   }
 
+  @JsonProperty(value = "isSimplifiedStockMoveLineDisplayEnabled")
+  public Boolean getSimplifiedStockMoveLineDisplayEnabled() {
+    return isSimplifiedStockMoveLineDisplayEnabled;
+  }
+
   @JsonProperty(value = "isOneLineShortcut")
   public Boolean getIsOneLineShortcut() {
     return isOneLineShortcut;
@@ -331,5 +353,15 @@ public class MobileSettingsResponse extends ResponseStructure {
   @JsonProperty(value = "isFileDeletionAllowed")
   public Boolean getIsFileDeletionAllowed() {
     return isFileDeletionAllowed;
+  }
+
+  @JsonProperty(value = "freightCarrierModeTrackingIds")
+  public List<Long> getFreightCarrierModeTrackingIds() {
+    return freightCarrierModeTrackingIds;
+  }
+
+  @JsonProperty(value = "defaultQiDetectionId")
+  public Long getDefaultQiDetectionId() {
+    return defaultQiDetectionId;
   }
 }

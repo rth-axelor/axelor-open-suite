@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2025 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2026 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -51,6 +51,7 @@ import com.axelor.apps.base.db.Currency;
 import com.axelor.apps.base.db.repo.TraceBackRepository;
 import com.axelor.apps.base.service.BankDetailsService;
 import com.axelor.apps.base.service.exception.TraceBackService;
+import com.axelor.common.ObjectUtils;
 import com.axelor.db.EntityHelper;
 import com.axelor.i18n.I18n;
 import com.axelor.inject.Beans;
@@ -60,7 +61,7 @@ import com.axelor.rpc.ActionRequest;
 import com.axelor.rpc.ActionResponse;
 import com.axelor.rpc.Context;
 import com.google.common.base.Strings;
-import com.google.inject.Singleton;
+import jakarta.inject.Singleton;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -555,5 +556,24 @@ public class BankReconciliationController {
     } catch (Exception e) {
       TraceBackService.trace(response, e);
     }
+  }
+
+  public void checkMultipleMoveLine(ActionRequest request, ActionResponse response) {
+    BankReconciliation bankReconciliation = request.getContext().asType(BankReconciliation.class);
+    List<MoveLine> moveLineList =
+        BankReconciliationToolService.getMoveLineOnMultipleReconciliationLine(bankReconciliation);
+    if (ObjectUtils.isEmpty(moveLineList)) {
+      return;
+    }
+
+    response.setError(
+        String.format(
+            I18n.get(
+                BankPaymentExceptionMessage
+                    .BANK_RECONCILIATION_MULTIPLE_MOVE_LINE_RECONCILIATION_ERROR),
+            moveLineList.stream()
+                .map(MoveLine::getName)
+                .distinct()
+                .collect(Collectors.joining(","))));
   }
 }

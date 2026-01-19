@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2025 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2026 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,6 +18,7 @@
  */
 package com.axelor.apps.contract.batch;
 
+import com.axelor.apps.account.db.Invoice;
 import com.axelor.apps.base.AxelorException;
 import com.axelor.apps.base.service.exception.TraceBackService;
 import com.axelor.apps.contract.db.Contract;
@@ -29,13 +30,13 @@ import com.axelor.apps.contract.service.ContractInvoicingService;
 import com.axelor.apps.contract.translation.ITranslation;
 import com.axelor.db.JPA;
 import com.axelor.i18n.I18n;
-import com.google.inject.Inject;
 import com.google.inject.persist.Transactional;
+import jakarta.inject.Inject;
+import jakarta.persistence.Query;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.persistence.Query;
 import org.apache.commons.collections.CollectionUtils;
 
 public class BatchContractInvoicing extends BatchStrategy {
@@ -98,14 +99,15 @@ public class BatchContractInvoicing extends BatchStrategy {
   }
 
   @Transactional
-  public void invoiceContracts(List<Contract> contractList) throws AxelorException {
+  public Invoice invoiceContracts(List<Contract> contractList) throws AxelorException {
     if (contractList.size() == 1) {
-      contractInvoicingService.invoicingContract(contractList.get(0));
+      return contractInvoicingService.invoicingContract(contractList.get(0));
     }
 
     if (contractList.size() > 1) {
-      contractInvoicingService.invoicingContracts(contractList);
+      return contractInvoicingService.invoicingContracts(contractList);
     }
+    return null;
   }
 
   @Override
@@ -113,17 +115,50 @@ public class BatchContractInvoicing extends BatchStrategy {
     int offset = 0;
     for (List<Long> idList : getIdsGroupedBy()) {
       ++offset;
-      try {
-        invoiceContracts(findContractsInList(idList));
-        incrementDone();
-      } catch (Exception e) {
-        incrementAnomaly();
-        TraceBackService.trace(e, "Contract invoicing batch", batch.getId());
+      List<Contract> allContractsList = findContractsInList(idList);
+
+      if (allContractsList.isEmpty()) {
+        return;
+      }
+
+      Boolean isGroupedInvoicing = allContractsList.get(0).getIsGroupedInvoicing();
+      List<List<Contract>> contractsToInvoice =
+          isGroupedInvoicing
+              ? List.of(allContractsList)
+              : allContractsList.stream().map(List::of).collect(Collectors.toList());
+
+      for (List<Contract> contractsList : contractsToInvoice) {
+        try {
+          Invoice invoice = invoiceContracts(contractsList);
+          if (invoice != null) {
+            invoice.addBatchSetItem(batchRepo.find(batch.getId()));
+            incrementDone(contractsList);
+          }
+        } catch (Exception e) {
+          incrementAnomaly(contractsList);
+          TraceBackService.trace(e, "Contract invoicing batch", batch.getId());
+        }
       }
       if (offset % getFetchLimit() == 0) {
         JPA.clear();
         findBatch();
       }
+    }
+  }
+
+  protected void incrementDone(List<Contract> contractsList) {
+    for (Contract contract : contractsList) {
+      contract.addBatchSetItem(batch);
+      super.incrementDone();
+    }
+  }
+
+  protected void incrementAnomaly(List<Contract> contractsList) {
+    findBatch();
+    for (Contract contract : contractsList) {
+      contract = contractRepository.find(contract.getId());
+      contract.addBatchSetItem(batch);
+      super.incrementAnomaly();
     }
   }
 

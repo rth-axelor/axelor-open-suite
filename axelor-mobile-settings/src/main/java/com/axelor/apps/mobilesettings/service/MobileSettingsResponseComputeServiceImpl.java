@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2025 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2026 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -34,7 +34,7 @@ import com.axelor.auth.db.User;
 import com.axelor.common.StringUtils;
 import com.axelor.studio.db.AppMobileSettings;
 import com.axelor.studio.db.repo.AppMobileSettingsRepository;
-import com.google.inject.Inject;
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -66,6 +66,7 @@ public class MobileSettingsResponseComputeServiceImpl
         getApps(appMobileSettings),
         appMobileSettings.getIsLoginUserQrcodeEnabled(),
         appMobileSettings.getIsTrackerMessageEnabled(),
+        appMobileSettings.getIsInboxAccessEnabled(),
         checkConfigWithRoles(
             appMobileSettings.getIsInventoryValidationEnabled(),
             appMobileSettings.getInventoryValidationRoleSet()),
@@ -100,6 +101,7 @@ public class MobileSettingsResponseComputeServiceImpl
         appMobileSettings.getIsEditionOfDateAllowed(),
         appMobileSettings.getIsTimesheetProjectInvoicingEnabled(),
         appMobileSettings.getIsStockLocationManagementEnabled(),
+        appMobileSettings.getIsSimplifiedStockMoveLineDisplayEnabled(),
         appMobileSettings.getIsOneLineShortcut(),
         appMobileSettings.getMinimalRequiredMobileAppVersion(),
         getFieldsToShowOnTimesheet(appMobileSettings.getFieldsToShowOnTimesheet()),
@@ -116,7 +118,9 @@ public class MobileSettingsResponseComputeServiceImpl
         appMobileSettings.getIsRenamingAllowed(),
         appMobileSettings.getIsFolderCreationAllowed(),
         appMobileSettings.getIsFileCreationAllowed(),
-        appMobileSettings.getIsFileDeletionAllowed());
+        appMobileSettings.getIsFileDeletionAllowed(),
+        getFreightCarrierModeTrackingIds(appMobileSettings.getFreightCarrierModeTrackingIds()),
+        appMobileSettings.getDefaultQiDetectionId());
   }
 
   protected List<Long> getAuthorizedDashboardIdList(AppMobileSettings appMobileSettings) {
@@ -268,7 +272,16 @@ public class MobileSettingsResponseComputeServiceImpl
                     .getAuthorizedRoles()),
             getMobileConfigFromAppSequence(MobileConfigRepository.APP_SEQUENCE_PURCHASE)
                 .getIsCustomizeMenuEnabled(),
-            getAccessibleMenusFromApp(MobileConfigRepository.APP_SEQUENCE_PURCHASE)));
+            getAccessibleMenusFromApp(MobileConfigRepository.APP_SEQUENCE_PURCHASE)),
+        new MobileConfigResponse(
+            MobileConfigRepository.APP_SEQUENCE_MAINTENANCE,
+            checkConfigWithRoles(
+                appMobileSettings.getIsMaintenanceAppEnabled(),
+                getMobileConfigFromAppSequence(MobileConfigRepository.APP_SEQUENCE_MAINTENANCE)
+                    .getAuthorizedRoles()),
+            getMobileConfigFromAppSequence(MobileConfigRepository.APP_SEQUENCE_MAINTENANCE)
+                .getIsCustomizeMenuEnabled(),
+            getAccessibleMenusFromApp(MobileConfigRepository.APP_SEQUENCE_MAINTENANCE)));
   }
 
   protected List<MobileMenuResponse> getAccessibleMenusFromApp(String appSequence) {
@@ -311,6 +324,17 @@ public class MobileSettingsResponseComputeServiceImpl
           ProductRepository.PRODUCT_TYPE_STORABLE, ProductRepository.PRODUCT_TYPE_SERVICE);
     }
     return Arrays.stream(productTypesToDisplay.split(",")).collect(Collectors.toList());
+  }
+
+  protected List<Long> getFreightCarrierModeTrackingIds(String freightCarrierModeTrackingIds) {
+    if (StringUtils.isEmpty(freightCarrierModeTrackingIds)) {
+      return List.of();
+    }
+    return Arrays.stream(freightCarrierModeTrackingIds.split(","))
+        .map(String::trim)
+        .filter(token -> !token.isEmpty())
+        .map(Long::valueOf)
+        .collect(Collectors.toList());
   }
 
   protected List<String> getReportingTypesToDisplay(AppMobileSettings appMobileSettings) {

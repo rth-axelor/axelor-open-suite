@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2025 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2026 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,6 +25,7 @@ import com.axelor.apps.base.db.CurrencyConversionLine;
 import com.axelor.apps.base.db.Unit;
 import com.axelor.studio.app.service.AppService;
 import com.axelor.studio.db.AppBase;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
@@ -119,11 +120,7 @@ public interface AppBaseService extends AppService {
    */
   int getProcessTimeout();
 
-  String getSireneTokenGeneratorUrl() throws AxelorException;
-
   String getSireneUrl() throws AxelorException;
 
-  String getSireneKey() throws AxelorException;
-
-  String getSireneSecret() throws AxelorException;
+  String getImportErrorPath() throws IOException;
 }

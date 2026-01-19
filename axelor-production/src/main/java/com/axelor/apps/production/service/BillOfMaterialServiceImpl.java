@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2025 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2026 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,7 +25,6 @@ import com.axelor.apps.base.db.repo.ProductRepository;
 import com.axelor.apps.base.db.repo.TraceBackRepository;
 import com.axelor.apps.base.service.ProductCompanyService;
 import com.axelor.apps.base.service.ProductService;
-import com.axelor.apps.base.service.app.AppBaseService;
 import com.axelor.apps.production.db.BillOfMaterial;
 import com.axelor.apps.production.db.BillOfMaterialLine;
 import com.axelor.apps.production.db.TempBomTree;
@@ -39,11 +38,11 @@ import com.axelor.auth.db.User;
 import com.axelor.db.JPA;
 import com.axelor.i18n.I18n;
 import com.axelor.inject.Beans;
-import com.google.inject.Inject;
 import com.google.inject.persist.Transactional;
+import jakarta.inject.Inject;
+import jakarta.persistence.Query;
 import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,7 +52,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.persistence.Query;
 import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,15 +109,7 @@ public class BillOfMaterialServiceImpl implements BillOfMaterialService {
     }
 
     productCompanyService.set(
-        product,
-        "costPrice",
-        billOfMaterial
-            .getCostPrice()
-            .divide(
-                costSheetService.getQtyRatio(billOfMaterial),
-                Beans.get(AppBaseService.class).getNbDecimalDigitForUnitPrice(),
-                RoundingMode.HALF_UP),
-        billOfMaterial.getCompany());
+        product, "costPrice", billOfMaterial.getCostPrice(), billOfMaterial.getCompany());
 
     if ((Boolean)
         productCompanyService.get(product, "autoUpdateSalePrice", billOfMaterial.getCompany())) {
@@ -268,7 +258,7 @@ public class BillOfMaterialServiceImpl implements BillOfMaterialService {
     TempBomTree bomTree;
     if (parentBom == null) {
       bomTree =
-          tempBomTreeRepo.all().filter("self.bom = ?1 and self.parentBom = null", bom).fetchOne();
+          tempBomTreeRepo.all().filter("self.bom = ?1 and self.parentBom IS null", bom).fetchOne();
     } else {
       bomTree =
           tempBomTreeRepo
@@ -285,8 +275,10 @@ public class BillOfMaterialServiceImpl implements BillOfMaterialService {
     if (bom != null) {
       bomTree.setProdProcess(bom.getProdProcess());
       bomTree.setProduct(bom.getProduct());
-      bomTree.setQty(bom.getQty());
-      bomTree.setUnit(bom.getUnit());
+      bomTree.setQty(
+          Optional.ofNullable(bomLine).map(BillOfMaterialLine::getQty).orElse(bom.getQty()));
+      bomTree.setUnit(
+          Optional.ofNullable(bomLine).map(BillOfMaterialLine::getUnit).orElse(bom.getUnit()));
     } else if (bomLine != null) {
       bomTree.setProduct(bomLine.getProduct());
       bomTree.setQty(bomLine.getQty());
