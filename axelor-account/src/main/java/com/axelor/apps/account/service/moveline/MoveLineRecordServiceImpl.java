@@ -161,7 +161,7 @@ public class MoveLineRecordServiceImpl implements MoveLineRecordService {
   }
 
   @Override
-  public void refreshVatSystemSelect(MoveLine moveLine, Company company){
+  public void refreshVatSystemSelect(MoveLine moveLine, Company company) {
     Account accountingAccount = moveLine.getAccount();
 
     if (accountingAccount == null || !accountingAccount.getIsTaxAuthorizedOnMoveLine()) {
@@ -170,14 +170,13 @@ public class MoveLineRecordServiceImpl implements MoveLineRecordService {
     }
 
     if (accountingAccount.getVatSystemSelect() != null
-            && accountingAccount.getVatSystemSelect() != AccountRepository.VAT_SYSTEM_DEFAULT) {
+        && accountingAccount.getVatSystemSelect() != AccountRepository.VAT_SYSTEM_DEFAULT) {
       moveLine.setVatSystemSelect(accountingAccount.getVatSystemSelect());
     } else {
       AccountingSituation accountingSituation =
-              accountingSituationRepository.findByCompanyAndPartner(
-                      company, moveLine.getPartner());
+          accountingSituationRepository.findByCompanyAndPartner(company, moveLine.getPartner());
       if (accountingSituation != null
-              && accountingSituation.getVatSystemSelect() == AccountingSituationRepository.VAT_DELIVERY)
+          && accountingSituation.getVatSystemSelect() == AccountingSituationRepository.VAT_DELIVERY)
         moveLine.setVatSystemSelect(AccountRepository.VAT_SYSTEM_GOODS);
     }
   }
